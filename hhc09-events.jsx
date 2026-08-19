@@ -5,7 +5,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const BASE_CATEGORIES = ["Evenement", "Vergadering", "Overig"];
-const DEFAULT_COLORS = { Evenement:"#f5821f", Vergadering:"#1d2d6b", Overig:"#7ec1e0" };
+const DEFAULT_COLORS = { Evenement:"#F18C21", Vergadering:"#2E3192", Overig:"#2FA8D8" };
 const MONTHS_NL = ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"];
 const DAYS_NL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
 const ROLE_LABELS = { viewer:"Bekijker", editor:"Redacteur", super:"Beheerder" };
@@ -164,16 +164,16 @@ function NavIcon({ name }) {
 // ---- SKELETON CARD ----
 function SkeletonCard({ delay = 0 }) {
   return (
-    <div style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:"4px solid #e7e0d0", borderRadius:8, padding:"18px 20px", position:"relative", overflow:"hidden", animationDelay:`${delay}s` }}>
+    <div style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"4px solid #ebe8df", borderRadius:8, padding:"18px 20px", position:"relative", overflow:"hidden", animationDelay:`${delay}s` }}>
       <div style={{ position:"absolute", inset:0, background:"linear-gradient(90deg,transparent 0%,#00000010 50%,transparent 100%)", animation:"shimmer 1.6s infinite" }} />
       <div style={{ display:"flex", justifyContent:"space-between", gap:16 }}>
         <div style={{ flex:1 }}>
-          <div style={{ height:12, background:"#e7e0d0", borderRadius:3, width:"25%", marginBottom:10 }} />
-          <div style={{ height:20, background:"#e7e0d0", borderRadius:3, width:"55%", marginBottom:8 }} />
-          <div style={{ height:13, background:"#e7e0d0", borderRadius:3, width:"75%", marginBottom:6 }} />
-          <div style={{ height:13, background:"#e7e0d0", borderRadius:3, width:"45%" }} />
+          <div style={{ height:12, background:"#ebe8df", borderRadius:3, width:"25%", marginBottom:10 }} />
+          <div style={{ height:20, background:"#ebe8df", borderRadius:3, width:"55%", marginBottom:8 }} />
+          <div style={{ height:13, background:"#ebe8df", borderRadius:3, width:"75%", marginBottom:6 }} />
+          <div style={{ height:13, background:"#ebe8df", borderRadius:3, width:"45%" }} />
         </div>
-        <div style={{ width:52, height:52, background:"#e7e0d0", borderRadius:6, flexShrink:0 }} />
+        <div style={{ width:52, height:52, background:"#ebe8df", borderRadius:6, flexShrink:0 }} />
       </div>
     </div>
   );
@@ -187,9 +187,9 @@ function QRModal({ event, onClose, primaryColor }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth:340, textAlign:"center" }} onClick={e=>e.stopPropagation()}>
         <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:4 }}>{event.title}</h2>
-        <div style={{ fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
-        <img src={qrUrl} alt="QR code" style={{ width:250, height:250, borderRadius:8, border:"1px solid #d8cfb8" }} />
-        <div style={{ fontSize:12, color:"#555", marginTop:12, fontFamily:"Barlow,sans-serif" }}>Scan voor meer info · Zet op flyers</div>
+        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
+        <img src={qrUrl} alt="QR code" style={{ width:250, height:250, borderRadius:8, border:"1px solid #e7e4da" }} />
+        <div style={{ fontSize:12, color:"#76756f", marginTop:12, fontFamily:"Barlow,sans-serif" }}>Scan voor meer info · Zet op flyers</div>
         <div style={{ display:"flex", gap:10, marginTop:20 }}>
           <a href={qrUrl} download={`qr-${event.id}.png`} className="btn-red" style={{ flex:1, textDecoration:"none", display:"block", textAlign:"center", padding:"10px" }}>Download QR</a>
           <button className="btn-ghost" onClick={onClose}>Sluiten</button>
@@ -218,12 +218,12 @@ function AttendeeModal({ event, attendees, onClose, onRegister, primaryColor }) 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
         <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:4 }}>{event.title}</h2>
-        <div style={{ fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
-        <div style={{ background:"#f5f1e6", borderRadius:8, padding:16, marginBottom:20 }}>
+        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
+        <div style={{ background:"#f3f1ea", borderRadius:8, padding:16, marginBottom:20 }}>
           <div style={{ fontSize:13, fontWeight:700, color:primaryColor, marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>✅ Aangemeld ({list.length})</div>
           {list.length === 0
-            ? <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Nog niemand aangemeld</div>
-            : <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{list.map((a,i)=><span key={i} style={{ background:"#e7e0d0", border:"1px solid #d8cfb8", borderRadius:20, padding:"4px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>{a.attendee_name}</span>)}</div>
+            ? <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Nog niemand aangemeld</div>
+            : <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{list.map((a,i)=><span key={i} style={{ background:"#ebe8df", border:"1px solid #e7e4da", borderRadius:20, padding:"4px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>{a.attendee_name}</span>)}</div>
           }
         </div>
         {registered ? (
@@ -289,16 +289,16 @@ function WeatherWidget({ location, startTime }) {
   const info = weather ? getWeatherInfo(weather.code) : null;
 
   return (
-    <div style={{ background:"#f5f1e6", borderRadius:8, padding:14, marginBottom:16 }}>
-      <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Weersverwachting</div>
-      {status === "loading" && <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Laden...</div>}
-      {status === "error" && <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Geen voorspelling beschikbaar</div>}
+    <div style={{ background:"#f3f1ea", borderRadius:8, padding:14, marginBottom:16 }}>
+      <div style={{ fontSize:10, color:"#56554d", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Weersverwachting</div>
+      {status === "loading" && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Laden...</div>}
+      {status === "error" && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Geen voorspelling beschikbaar</div>}
       {status === "ok" && weather && info && (
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <span style={{ fontSize:32 }}>{info.icon}</span>
           <div>
             <div style={{ fontSize:15, fontWeight:700 }}>{info.label} · {weather.min}° – {weather.max}°</div>
-            <div style={{ fontSize:13, color:"#888", fontFamily:"Barlow,sans-serif" }}>☔ {weather.rain}% kans op neerslag</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>☔ {weather.rain}% kans op neerslag</div>
           </div>
         </div>
       )}
@@ -342,7 +342,7 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
 
   const stats = [
     { label:"Komende events", value:upcoming.length, color:primaryColor },
-    { label:"Afgelopen", value:past.length, color:"#555" },
+    { label:"Afgelopen", value:past.length, color:"#76756f" },
     { label:"Deze maand", value:thisMonth.length, color:"#f4a261" },
     { label:"Aanmeldingen", value:totalAttendees, color:"#2ec4b6" },
     { label:"Gearchiveerd", value:archived.length, color:"#6a4c93" },
@@ -374,20 +374,20 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
         {stats.map(s => (
           <div key={s.label} style={{ background:"#ffffff", border:`1px solid ${s.color}33`, borderLeft:`3px solid ${s.color}`, borderRadius:8, padding:"14px 16px", animation:"fadeInUp .3s both" }}>
             <div style={{ fontSize:34, fontWeight:900, color:s.color, lineHeight:1 }}>{s.value}</div>
-            <div style={{ fontSize:11, color:"#555", fontFamily:"Barlow,sans-serif", marginTop:4, textTransform:"uppercase", letterSpacing:.5 }}>{s.label}</div>
+            <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:4, textTransform:"uppercase", letterSpacing:.5 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {attentionItems.length > 0 && (
         <div style={{ marginBottom:28 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:10 }}>Aandachtspunten</div>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:10 }}>Aandachtspunten</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {attentionItems.map((it, i) => (
               <div key={i} onClick={it.action} style={{ background:"#ffffff", border:`1px solid ${it.type==="warn"?"#e63946":primaryColor}33`, borderLeft:`3px solid ${it.type==="warn"?"#e63946":primaryColor}`, borderRadius:8, padding:"10px 16px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
                 <span style={{ fontSize:16 }}>{it.icon}</span>
                 <span style={{ flex:1 }}>{it.text}</span>
-                <span style={{ color:"#999" }}>›</span>
+                <span style={{ color:"#b0afa9" }}>›</span>
               </div>
             ))}
           </div>
@@ -396,10 +396,10 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
 
       {nextEvent && (
         <div style={{ marginBottom:28 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:10 }}>Eerstvolgende event</div>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:10 }}>Eerstvolgende event</div>
           <div onClick={()=>onSelectEvent(nextEvent)} style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderRadius:8, padding:"16px 20px", cursor:"pointer", animation:"fadeInUp .3s .1s both" }}>
             <div style={{ fontSize:18, fontWeight:800, textTransform:"uppercase" }}>{nextEvent.title}</div>
-            <div style={{ fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif", marginTop:4 }}>{formatDate(nextEvent.start_time)} · {nextEvent.location||"Locatie onbekend"}</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:4 }}>{formatDate(nextEvent.start_time)} · {nextEvent.location||"Locatie onbekend"}</div>
             <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:12 }}>
               <span className="badge" style={{ background:(categoryColors[nextEvent.category]||primaryColor)+"22", color:categoryColors[nextEvent.category]||primaryColor }}>{nextEvent.category}</span>
               <span style={{ fontSize:12, color:primaryColor, fontWeight:700 }}>Over {daysUntil(nextEvent.start_time)} dagen</span>
@@ -411,16 +411,16 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginBottom:28 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444" }}>Bardienstrooster</div>
+            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d" }}>Bardienstrooster</div>
             <button className="btn-sm" onClick={()=>onGoTab("bardienst")} style={{ fontSize:11 }}>Alles →</button>
           </div>
           {upcomingBardienst.length === 0 ? (
-            <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Geen komende bardiensten gepland</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Geen komende bardiensten gepland</div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {upcomingBardienst.map(b => (
-                <div key={b.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:6, padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
-                  <strong style={{ fontFamily:"'Barlow Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong> — {b.names}
+                <div key={b.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:6, padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
+                  <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong> — {b.names}
                 </div>
               ))}
             </div>
@@ -429,16 +429,16 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
 
         <div>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444" }}>Laatste mededelingen</div>
+            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d" }}>Laatste mededelingen</div>
             <button className="btn-sm" onClick={()=>onGoTab("nieuws")} style={{ fontSize:11 }}>Alles →</button>
           </div>
           {recentNews.length === 0 ? (
-            <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Nog geen mededelingen geplaatst</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Nog geen mededelingen geplaatst</div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {recentNews.map(n => (
-                <div key={n.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:6, padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
-                  {n.pinned && "📌 "}<strong style={{ fontFamily:"'Barlow Condensed',sans-serif" }}>{n.title}</strong>
+                <div key={n.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:6, padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
+                  {n.pinned && "📌 "}<strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{n.title}</strong>
                 </div>
               ))}
             </div>
@@ -449,14 +449,14 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
       {recentIdeas.length > 0 && (
         <div style={{ marginBottom:28 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444" }}>Nieuwste ideeën</div>
+            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d" }}>Nieuwste ideeën</div>
             <button className="btn-sm" onClick={()=>onGoTab("ideeen")} style={{ fontSize:11 }}>Alles →</button>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
             {recentIdeas.map(idea => (
-              <div key={idea.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:"3px solid #2a9d8f", borderRadius:6, padding:"10px 14px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
+              <div key={idea.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"3px solid #2a9d8f", borderRadius:6, padding:"10px 14px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
                 <div style={{ fontWeight:700, color:"#2a9d8f", marginBottom:2 }}>{idea.name || "Anoniem"}</div>
-                <div style={{ color:"#555" }}>{idea.message.length>120?idea.message.slice(0,120)+"…":idea.message}</div>
+                <div style={{ color:"#76756f" }}>{idea.message.length>120?idea.message.slice(0,120)+"…":idea.message}</div>
               </div>
             ))}
           </div>
@@ -465,7 +465,7 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginBottom:28 }}>
         <div>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:12 }}>Verdeling per categorie</div>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:12 }}>Verdeling per categorie</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {allCategories.map(cat => {
               const cc = categoryColors[cat]||primaryColor;
@@ -474,7 +474,7 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
               return (
                 <div key={cat} style={{ display:"flex", alignItems:"center", gap:12 }}>
                   <div style={{ width:90, fontSize:12, color:cc, fontWeight:700, textTransform:"uppercase", flexShrink:0 }}>{cat}</div>
-                  <div style={{ flex:1, height:6, background:"#e7e0d0", borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ flex:1, height:6, background:"#ebe8df", borderRadius:3, overflow:"hidden" }}>
                     <div style={{ height:"100%", width:`${pct}%`, background:cc, borderRadius:3, transition:"width .6s ease" }} />
                   </div>
                   <div style={{ width:20, fontSize:13, fontWeight:700, color:cc, textAlign:"right", flexShrink:0 }}>{count}</div>
@@ -485,9 +485,9 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
         </div>
 
         <div>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:12 }}>Meest actieve leden</div>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:12 }}>Meest actieve leden</div>
           {topAttendees.length === 0 ? (
-            <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>Nog geen aanmeldingen</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Nog geen aanmeldingen</div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {topAttendees.map(([name, count]) => (
@@ -502,16 +502,16 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:10 }}>
-        <div style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:8, padding:16 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:10 }}>Financieel (komend)</div>
+        <div style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:8, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:10 }}>Financieel (komend)</div>
           <div style={{ fontSize:28, fontWeight:900, color:"#52b788" }}>€{totalUpcomingCost.toFixed(2)}</div>
-          <div style={{ fontSize:12, color:"#555", fontFamily:"Barlow,sans-serif" }}>totaal aan deelnamekosten</div>
-          <div style={{ fontSize:12, color:"#555", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{sponsoredCount} event{sponsoredCount===1?"":"s"} met sponsor</div>
+          <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>totaal aan deelnamekosten</div>
+          <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{sponsoredCount} event{sponsoredCount===1?"":"s"} met sponsor</div>
         </div>
-        <div style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:8, padding:16 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#444", marginBottom:10 }}>Beheerders</div>
+        <div style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:8, padding:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:10 }}>Beheerders</div>
           <div style={{ fontSize:28, fontWeight:900, color:primaryColor }}>{pinsList.length}</div>
-          <div style={{ fontSize:12, color:"#555", fontFamily:"Barlow,sans-serif" }}>{pinsByRole.super} beheerder, {pinsByRole.editor} redacteur, {pinsByRole.viewer} bekijker</div>
+          <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{pinsByRole.super} beheerder, {pinsByRole.editor} redacteur, {pinsByRole.viewer} bekijker</div>
           <button className="btn-sm" onClick={onOpenSettings} style={{ marginTop:8 }}>Beheren</button>
         </div>
       </div>
@@ -540,9 +540,9 @@ function WeekView({ events, weekStart, onWeekChange, categoryColors, primaryColo
           const isToday = day.toDateString()===today.toDateString();
           const dayEvs = events.filter(e => !e.archived && (!e.hidden||adminMode) && new Date(e.start_time).toDateString()===day.toDateString());
           return (
-            <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#e7e0d0"}`, borderRadius:6, padding:"6px 4px" }}>
-              <div style={{ fontSize:9, color:isToday?primaryColor:"#444", fontWeight:700, textTransform:"uppercase", textAlign:"center", marginBottom:2 }}>{DAYS_NL[i]}</div>
-              <div style={{ fontSize:18, fontWeight:900, color:isToday?primaryColor:"#444", textAlign:"center", lineHeight:1, marginBottom:6 }}>{day.getDate()}</div>
+            <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#ebe8df"}`, borderRadius:6, padding:"6px 4px" }}>
+              <div style={{ fontSize:9, color:isToday?primaryColor:"#56554d", fontWeight:700, textTransform:"uppercase", textAlign:"center", marginBottom:2 }}>{DAYS_NL[i]}</div>
+              <div style={{ fontSize:18, fontWeight:900, color:isToday?primaryColor:"#56554d", textAlign:"center", lineHeight:1, marginBottom:6 }}>{day.getDate()}</div>
               {dayEvs.map(ev => {
                 const cc = categoryColors[ev.category]||primaryColor;
                 return (
@@ -574,13 +574,13 @@ function YearView({ events, year, onYearChange, categoryColors, primaryColor, on
           const monthEvs = events.filter(e => { const d=new Date(e.start_time); return d.getFullYear()===year&&d.getMonth()===mi; });
           const days = getCalendarDays(year, mi);
           return (
-            <div key={name} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:8, padding:"12px 12px 10px", animation:"fadeInUp .3s both" }}>
+            <div key={name} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:8, padding:"12px 12px 10px", animation:"fadeInUp .3s both" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:monthEvs.length?primaryColor:"#444" }}>{name}</div>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:monthEvs.length?primaryColor:"#56554d" }}>{name}</div>
                 {monthEvs.length>0 && <span style={{ fontSize:10, background:primaryColor+"22", color:primaryColor, borderRadius:10, padding:"1px 7px", fontWeight:700 }}>{monthEvs.length}</span>}
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:1 }}>
-                {DAYS_NL.map(d=><div key={d} style={{ fontSize:7, color:"#d8cfb8", textAlign:"center", fontWeight:700, paddingBottom:2 }}>{d[0]}</div>)}
+                {DAYS_NL.map(d=><div key={d} style={{ fontSize:7, color:"#e7e4da", textAlign:"center", fontWeight:700, paddingBottom:2 }}>{d[0]}</div>)}
                 {days.map((day,i) => {
                   if (!day) return <div key={`e${i}`} />;
                   const dayEvs = monthEvs.filter(e=>new Date(e.start_time).getDate()===day.getDate());
@@ -591,7 +591,7 @@ function YearView({ events, year, onYearChange, categoryColors, primaryColor, on
                       fontSize:8, textAlign:"center", padding:"2px 0", borderRadius:2,
                       cursor:dayEvs.length?"pointer":"default",
                       background:cc?cc+"33":"transparent",
-                      color:isToday?primaryColor:dayEvs.length?"#333":"#d8cfb8",
+                      color:isToday?primaryColor:dayEvs.length?"#1d1f3a":"#e7e4da",
                       fontWeight:isToday||dayEvs.length?700:400,
                       outline:isToday?`1px solid ${primaryColor}`:"none",
                     }}>
@@ -650,7 +650,7 @@ export default function HHCEvents() {
   const [dragOverId, setDragOverId] = useState(null);
 
   const [categoryColors, setCategoryColors] = useState(() => loadLS("hhc09_cat_colors", DEFAULT_COLORS));
-  const [clubSettings, setClubSettings] = useState(() => loadLS("hhc09_club_settings", { name:"Heusden Herpt Combinatie", subtitle:"Clubagenda", primaryColor:"#1d2d6b", logo:"" }));
+  const [clubSettings, setClubSettings] = useState(() => loadLS("hhc09_club_settings", { name:"Heusden Herpt Combinatie", subtitle:"Clubagenda", primaryColor:"#2E3192", logo:"" }));
   const [pinsList, setPinsList] = useState([]);
   const [newPin, setNewPin] = useState("");
   const [newPinRole, setNewPinRole] = useState("editor");
@@ -1019,51 +1019,51 @@ export default function HHCEvents() {
   const bardienstThisWeek = bardienst.filter(b => { const d = new Date(b.shift_date); return d >= thisWeekStart && d < thisWeekEnd; });
 
   return (
-    <div style={{ minHeight:"100vh", background:"#f5f1e6", color:"#1c1c26", fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"#f3f1ea", color:"#1d1f3a", fontFamily:"'Saira Condensed','Arial Narrow',Arial,sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@400;500;600;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${primaryColor};border-radius:2px}
         @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
-        .ev-card{background:#ffffff;border:1px solid #e7e0d0;border-left:4px solid var(--cc);border-radius:8px;padding:18px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;animation:fadeInUp .25s ease both;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+        .ev-card{background:#ffffff;border:1px solid #ebe8df;border-radius:6px;padding:18px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;animation:fadeInUp .25s ease both;box-shadow:0 1px 2px rgba(0,0,0,.03)}
         .ev-card:hover{background:#fffdf8;transform:translateX(3px);box-shadow:-4px 0 20px ${primaryColor}22,0 1px 3px rgba(0,0,0,.06)}
         .ev-card.hidden-ev{opacity:.5;border-style:dashed}
         .ev-card.drag-over{border-top:2px solid ${primaryColor};transform:translateY(-2px)}
-        .filter-btn{background:transparent;border:1px solid #d8cfb8;color:#888;padding:6px 16px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
-        .filter-btn.active{background:${primaryColor};border-color:${primaryColor};color:white}
-        .filter-btn:hover:not(.active){border-color:${primaryColor};color:${primaryColor}}
+        .filter-btn{background:#fff;border:1.5px solid #e7e4da;color:#76756f;padding:7px 16px;border-radius:22px;cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
+        .filter-btn.active{background:var(--fc,${primaryColor});border-color:var(--fc,${primaryColor});color:white}
+        .filter-btn:hover:not(.active){border-color:var(--fc,${primaryColor});color:var(--fc,${primaryColor})}
         .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);animation:fadeIn .15s ease}
-        .modal{background:#ffffff;border:1px solid #d8cfb8;border-radius:12px;padding:32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-        .input{background:#ffffff;border:1px solid #d8cfb8;color:#1c1c26;padding:10px 14px;border-radius:6px;font-family:inherit;font-size:16px;width:100%;transition:border-color .2s;min-width:0}
+        .modal{background:#ffffff;border:1px solid #e7e4da;border-radius:12px;padding:32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+        .input{background:#ffffff;border:1px solid #e7e4da;color:#1d1f3a;padding:10px 14px;border-radius:6px;font-family:inherit;font-size:16px;width:100%;transition:border-color .2s;min-width:0}
         .input:focus{outline:none;border-color:${primaryColor}}
-        .btn-red{background:${primaryColor};color:white;border:none;padding:10px 24px;border-radius:6px;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+        .btn-red{background:${primaryColor};color:white;border:none;padding:12px 24px;border-radius:5px;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
         .btn-red:hover{filter:brightness(1.15)}
-        .btn-ghost{background:transparent;color:#888;border:1px solid #d8cfb8;padding:10px 20px;border-radius:6px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
-        .btn-ghost:hover{border-color:#999;color:#222}
+        .btn-ghost{background:transparent;color:#76756f;border:1px solid #e7e4da;padding:10px 20px;border-radius:6px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
+        .btn-ghost:hover{border-color:#b0afa9;color:#222}
         .btn-ghost-onbrand{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.5);padding:10px 20px;border-radius:6px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
         .btn-ghost-onbrand:hover{background:rgba(255,255,255,.32)}
-        .btn-sm{background:#e7e0d0;border:1px solid #d8cfb8;color:#888;padding:5px 12px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;transition:all .15s}
-        .btn-sm:hover{color:#222;border-color:#999}
-        .pill-tab{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.3);color:#fff;padding:10px 22px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
-        .pill-tab.active{background:#fff;border-color:#fff;color:${primaryColor}}
-        .pill-tab:hover:not(.active){background:rgba(255,255,255,.28)}
+        .btn-sm{background:#ebe8df;border:1px solid #e7e4da;color:#76756f;padding:5px 12px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;transition:all .15s}
+        .btn-sm:hover{color:#222;border-color:#b0afa9}
+        .pill-tab{background:#ffffff2e;border:none;color:#fff;padding:11px 22px 13px;border-radius:4px 4px 0 0;cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
+        .pill-tab.active{background:#fff;color:${primaryColor}}
+        .pill-tab:hover:not(.active){background:#ffffff44}
         .admin-corner{position:absolute;top:16px;right:20px;z-index:5;display:flex;align-items:center;gap:8px}
         .bottom-nav{display:none}
-        .bottom-nav-btn{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px 6px;background:transparent;border:none;color:#888;font-family:inherit;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
+        .bottom-nav-btn{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px 6px;background:transparent;border:none;color:#76756f;font-family:inherit;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
         .bottom-nav-btn .bn-icon{display:flex;align-items:center;justify-content:center;height:20px}
         .bottom-nav-btn.active{color:${primaryColor}}
         .filter-toggle{display:none}
-        .cal-day{min-height:64px;padding:4px;border:1px solid #e7e0d0;border-radius:4px;transition:background .15s}
-        .cal-day.today{border-color:${primaryColor}}
-        .cal-day.has-events{background:#ffffff}
-        .cal-dot{font-size:10px;padding:1px 4px;border-radius:3px;margin-top:2px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
+        .cal-day{min-height:76px;padding:6px;border:1.5px solid #f0eee6;border-radius:5px;background:#fff;transition:background .15s}
+        .cal-day.today{border-color:#F18C21}
+        .cal-day.has-events{background:#faf9f6}
+        .cal-dot{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;margin-top:4px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
         select.input option{background:#ffffff}
-        .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #e7e0d0}
+        .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #ebe8df}
         .stat-bar{background:${primaryColor};border-radius:4px 4px 0 0;min-width:8px;transition:height .5s ease}
-        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#ffffff;border:1px solid #d8cfb8;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;z-index:999;animation:fadeInUp .2s ease;box-shadow:0 8px 30px rgba(0,0,0,.18);white-space:nowrap}
+        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#ffffff;border:1px solid #e7e4da;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;z-index:999;animation:fadeInUp .2s ease;box-shadow:0 8px 30px rgba(0,0,0,.18);white-space:nowrap}
         @media print{nav,header,.no-print{display:none!important}body{background:white;color:black}.ev-card{border:1px solid #ccc;break-inside:avoid;margin-bottom:8px}.print-title{display:block!important}}
         .print-title{display:none}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1078,8 +1078,8 @@ export default function HHCEvents() {
           .admin-corner{top:12px;right:12px;gap:6px}
           .admin-corner .btn-ghost-onbrand{padding:7px 11px;font-size:11px}
           main{padding-bottom:92px!important}
-          .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #e7e0d0;z-index:90;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-          .filter-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;border:1px solid #d8cfb8;color:#444;padding:12px 16px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-bottom:10px}
+          .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #ebe8df;z-index:90;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+          .filter-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;border:1px solid #e7e4da;color:#56554d;padding:12px 16px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-bottom:10px}
           .filter-bar-content{display:none}
           .filter-bar-content.expanded{display:block;animation:fadeInUp .2s ease both}
         }
@@ -1100,14 +1100,16 @@ export default function HHCEvents() {
       )}
 
       {/* Header */}
-      <header className="no-print" style={{ background:"linear-gradient(135deg,#f5821f,#e8731a)", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(circle,#ffffff35 1px,transparent 1.5px)", backgroundSize:"16px 16px", opacity:.6, pointerEvents:"none" }} />
-        <div className="header-chevron" style={{ position:"absolute", top:"50%", right:24, transform:"translateY(-50%)", fontSize:64, fontWeight:900, color:"#ffffff26", pointerEvents:"none", letterSpacing:-10 }}>❯❯❯</div>
+      <header className="no-print" style={{ background:"#F18C21", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", top:-30, right:40, width:220, height:200, backgroundImage:"radial-gradient(#ffffff55 1.7px,transparent 1.8px)", backgroundSize:"15px 15px", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", top:0, bottom:0, left:"46%", width:90, background:"#ffffff1f", transform:"skewX(-15deg)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", top:0, bottom:0, left:"53%", width:26, background:"#ffffff1f", transform:"skewX(-15deg)", pointerEvents:"none" }} />
+        <div className="header-chevron" style={{ position:"absolute", top:"50%", right:24, transform:"translateY(-50%)", fontSize:64, fontWeight:900, fontStyle:"italic", color:"#ffffff26", pointerEvents:"none", letterSpacing:-10 }}>❯❯❯</div>
 
         <div className="admin-corner">
           {adminMode ? (
             <>
-              <span style={{ fontSize:11, color:"#1d2d6b", background:"#ffffffcc", padding:"3px 10px", borderRadius:12, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
+              <span style={{ fontSize:11, color:"#2E3192", background:"#ffffffcc", padding:"3px 10px", borderRadius:12, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
               <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
             </>
           ) : (
@@ -1125,7 +1127,7 @@ export default function HHCEvents() {
                   style={{ height:34, width:34, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0 }}
                   onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
                 />
-                <span style={{ fontSize:11, fontWeight:800, letterSpacing:2, textTransform:"uppercase", color:"#1d2d6b" }}>{clubSettings.name}</span>
+                <span style={{ fontSize:11, fontWeight:800, letterSpacing:2, textTransform:"uppercase", color:"#2E3192" }}>{clubSettings.name}</span>
               </div>
               <h1 style={{ fontSize:"clamp(28px,6vw,52px)", fontWeight:900, fontStyle:"italic", letterSpacing:"-1px", lineHeight:.95, textTransform:"uppercase", color:"#fff" }}>{clubSettings.subtitle}</h1>
             </div>
@@ -1166,25 +1168,29 @@ export default function HHCEvents() {
       {/* Eerstvolgende */}
       {upcomingTop.length > 0 && (() => {
         const ev = upcomingTop[0];
-        const cc = categoryColors[ev.category] || primaryColor;
         const days = daysUntil(ev.start_time);
         const d = new Date(ev.start_time);
+        const daysLabel = days<0?"Afgelopen":days===0?"Vandaag":days===1?"Morgen":`${days} dagen`;
         return (
           <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-              <span style={{ color:primaryColor, fontWeight:900 }}>❯❯❯</span>
-              <span style={{ fontSize:12, fontWeight:800, letterSpacing:2, color:primaryColor, textTransform:"uppercase" }}>Eerstvolgende</span>
-            </div>
-            <div onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", borderRadius:10, overflow:"hidden", cursor:"pointer", boxShadow:"0 6px 24px rgba(0,0,0,.12)", animation:"fadeInUp .3s both" }}>
-              <div style={{ background:primaryColor, color:"#fff", padding:"18px 26px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minWidth:90 }}>
-                <div style={{ fontSize:36, fontWeight:900, lineHeight:1 }}>{d.getDate()}</div>
-                <div style={{ fontSize:13, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
-              </div>
-              <div style={{ flex:1, background:cc, color:"#fff", padding:"18px 22px" }}>
-                <span className="badge" style={{ background:"#ffffff33", color:"#fff", marginBottom:8, display:"inline-block" }}>{ev.category}{days>0?` · ${days} DAGEN`:""}</span>
-                <div style={{ fontSize:22, fontWeight:900, textTransform:"uppercase", lineHeight:1.05 }}>{ev.title}</div>
-                <div style={{ fontSize:13, marginTop:6, opacity:.9, fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)} · {formatTime(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
-                {ev.cost > 0 && <div style={{ fontSize:12, marginTop:6, opacity:.9, fontFamily:"Barlow,sans-serif" }}>💶 €{Number(ev.cost).toFixed(2)}</div>}
+            <div style={{ fontSize:12, fontWeight:800, letterSpacing:3, color:primaryColor, textTransform:"uppercase", marginBottom:10 }}>❯❯ Eerstvolgende</div>
+            <div onClick={()=>setSelectedEvent(ev)} style={{ position:"relative", background:"#2E3192", borderRadius:6, padding:"26px 28px", overflow:"hidden", cursor:"pointer", animation:"fadeInUp .3s both" }}>
+              <div style={{ position:"absolute", top:0, bottom:0, right:0, width:200, background:"#F18C21", clipPath:"polygon(40% 0,100% 0,100% 100%,0 100%)" }} />
+              <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
+              <div style={{ position:"relative", display:"flex", alignItems:"center", gap:26, flexWrap:"wrap" }}>
+                <div style={{ textAlign:"center", color:"#fff", flex:"none" }}>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:64, lineHeight:.75 }}>{d.getDate()}</div>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:20, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                </div>
+                <div style={{ flex:1, minWidth:200 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, flexWrap:"wrap" }}>
+                    <span style={{ background:"#fff", color:"#2E3192", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
+                    <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:"#fff", textTransform:"uppercase" }}>{daysLabel}</span>
+                  </div>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:36, lineHeight:.9, color:"#fff", textTransform:"uppercase" }}>{ev.title}</div>
+                  <div style={{ fontSize:15, color:"#c9cbef", marginTop:8 }}>{formatDate(ev.start_time)} · {formatTime(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
+                  {ev.cost > 0 && <div style={{ fontSize:13, color:"#c9cbef", marginTop:4 }}>💶 €{Number(ev.cost).toFixed(2)}</div>}
+                </div>
               </div>
             </div>
             {upcomingTop.length > 1 && (
@@ -1195,10 +1201,10 @@ export default function HHCEvents() {
                   return (
                     <div key={ev2.id} onClick={()=>setSelectedEvent(ev2)} style={{ background:"#ffffff", border:`1px solid ${cc2}33`, borderRadius:8, padding:"12px 16px", cursor:"pointer", animation:`fadeInUp .3s ${(i+1)*0.08}s both` }}>
                       <div style={{ fontSize:14, fontWeight:700, textTransform:"uppercase" }}>{ev2.title}</div>
-                      <div style={{ fontSize:12, color:"#666", marginTop:2, fontFamily:"Barlow,sans-serif" }}>{formatDate(ev2.start_time)}</div>
+                      <div style={{ fontSize:12, color:"#76756f", marginTop:2, fontFamily:"Barlow,sans-serif" }}>{formatDate(ev2.start_time)}</div>
                       <div style={{ marginTop:6, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                         <span className="badge" style={{ background:cc2+"22", color:cc2 }}>{ev2.category}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:days2<=3?primaryColor:"#999" }}>{days2===0?"VANDAAG":days2===1?"MORGEN":`${days2}D`}</span>
+                        <span style={{ fontSize:11, fontWeight:700, color:days2<=3?primaryColor:"#b0afa9" }}>{days2===0?"VANDAAG":days2===1?"MORGEN":`${days2}D`}</span>
                       </div>
                     </div>
                   );
@@ -1218,7 +1224,7 @@ export default function HHCEvents() {
                 <span style={{ fontSize:22 }}>📌</span>
                 <div>
                   <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{n.title}</div>
-                  <div style={{ fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{n.body.length>140?n.body.slice(0,140)+"…":n.body}</div>
+                  <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{n.body.length>140?n.body.slice(0,140)+"…":n.body}</div>
                 </div>
               </div>
             ))}
@@ -1235,7 +1241,7 @@ export default function HHCEvents() {
               <div style={{ fontSize:11, fontWeight:700, letterSpacing:2, textTransform:"uppercase", color:primaryColor, marginBottom:4 }}>Bardienst deze week</div>
               {bardienstThisWeek.map(b => (
                 <div key={b.id} style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>
-                  <strong style={{ fontFamily:"'Barlow Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong>{b.time_label?` · ${b.time_label}`:""} — {b.names}
+                  <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong>{b.time_label?` · ${b.time_label}`:""} — {b.names}
                 </div>
               ))}
             </div>
@@ -1256,8 +1262,8 @@ export default function HHCEvents() {
         <div className={`filter-bar-content ${showMobileFilters?"expanded":""}`}>
         <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap" }}>
           <div style={{ position:"relative", flex:1, minWidth:200 }}>
-            <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#444", pointerEvents:"none" }}>🔍</span>
-            <input className="input" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:38 }} />
+            <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#56554d", pointerEvents:"none" }}>🔍</span>
+            <input className="input" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:38, borderRadius:24 }} />
           </div>
           <input className="input" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ width:150 }} title="Vanaf datum" />
           <input className="input" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ width:150 }} title="Tot datum" />
@@ -1269,10 +1275,10 @@ export default function HHCEvents() {
         </div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
           {["Alles",...allCategories].map(cat=>(
-            <button key={cat} className={`filter-btn ${filter===cat?"active":""}`} onClick={()=>setFilter(cat)}>{cat}</button>
+            <button key={cat} className={`filter-btn ${filter===cat?"active":""}`} style={{ "--fc":cat==="Alles"?primaryColor:(categoryColors[cat]||primaryColor) }} onClick={()=>setFilter(cat)}>{cat}</button>
           ))}
           <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
-            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>
               <input type="checkbox" checked={showPast} onChange={e=>setShowPast(e.target.checked)} style={{ accentColor:primaryColor }} />
               Toon verleden
             </label>
@@ -1293,17 +1299,17 @@ export default function HHCEvents() {
               ? (
                 <div style={{ textAlign:"center", padding:60 }}>
                   <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
-                  <div style={{ color:"#444", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Geen evenementen gevonden</div>
-                  {activeFilters && <div style={{ color:"#555", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Pas de zoekfilters aan</div>}
+                  <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Geen evenementen gevonden</div>
+                  {activeFilters && <div style={{ color:"#76756f", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Pas de zoekfilters aan</div>}
                   {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNew}>Eerste evenement toevoegen</button>}
                 </div>
               )
               : Object.entries(grouped).map(([month,evs]) => (
                 <div key={month} style={{ marginBottom:36 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-                    <span style={{ fontSize:11, fontWeight:700, letterSpacing:3, textTransform:"uppercase", color:primaryColor }}>{month}</span>
-                    <div style={{ flex:1, height:1, background:"#e7e0d0" }} />
-                    <span style={{ fontSize:11, color:"#333" }}>{evs.length} activiteit{evs.length!==1?"en":""}</span>
+                    <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:22, textTransform:"uppercase", color:"#2E3192" }}>{month}</span>
+                    <div style={{ flex:1, height:3, background:"#F18C21" }} />
+                    <span style={{ fontSize:12, fontWeight:700, color:"#b0afa9", textTransform:"uppercase" }}>{evs.length} activiteit{evs.length!==1?"en":""}</span>
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                     {evs.map((ev,idx) => {
@@ -1328,27 +1334,27 @@ export default function HHCEvents() {
                           )}
                           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
                             <div style={{ background:cc, color:"#fff", borderRadius:8, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                              <div style={{ fontSize:24, fontWeight:900, lineHeight:1 }}>{new Date(ev.start_time).getDate()}</div>
+                              <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{new Date(ev.start_time).getDate()}</div>
                               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{new Date(ev.start_time).toLocaleDateString("nl-NL",{month:"short"})}</div>
                             </div>
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
                                 <span className="badge" style={{ background:cc+"22", color:cc }}>{ev.category}</span>
-                                {ev.hidden && <span className="badge" style={{ background:"#33300022", color:"#888" }}>Verborgen</span>}
-                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:primaryColor+"22", color:primaryColor }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
+                                {ev.hidden && <span className="badge" style={{ background:"#76756f22", color:"#76756f" }}>Verborgen</span>}
+                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:primaryColor+"14", color:primaryColor }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
                                 {ev.cost > 0 && <span style={{ fontSize:11, color:"#52b788", fontFamily:"Barlow,sans-serif" }}>💶 €{Number(ev.cost).toFixed(2)}</span>}
-                                {ev.sponsor_name && <span style={{ fontSize:11, color:"#888", fontFamily:"Barlow,sans-serif" }}>🤝 {ev.sponsor_name}</span>}
+                                {ev.sponsor_name && <span style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>🤝 {ev.sponsor_name}</span>}
                               </div>
-                              <div style={{ fontSize:20, fontWeight:800, textTransform:"uppercase", lineHeight:1.1 }}>{ev.title}</div>
-                              {ev.description && <div style={{ fontSize:14, color:"#666", marginTop:4, fontFamily:"Barlow,sans-serif", lineHeight:1.4 }}>{ev.description.length>100?ev.description.slice(0,100)+"…":ev.description}</div>}
+                              <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
+                              {ev.description && <div style={{ fontSize:14, color:"#76756f", marginTop:4, fontFamily:"Barlow,sans-serif", lineHeight:1.4 }}>{ev.description.length>100?ev.description.slice(0,100)+"…":ev.description}</div>}
                               <div style={{ marginTop:8, display:"flex", gap:12, flexWrap:"wrap" }}>
-                                <span style={{ fontSize:13, color:"#888", fontFamily:"Barlow,sans-serif" }}>🕐 {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>
-                                {ev.location && <span style={{ fontSize:13, color:"#888", fontFamily:"Barlow,sans-serif" }}>📍 {ev.location}</span>}
-                                <span style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>👥 {(attendees[ev.id]||[]).length} aangemeld</span>
+                                <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>🕐 {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>
+                                {ev.location && <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>📍 {ev.location}</span>}
+                                <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>👥 {(attendees[ev.id]||[]).length} aangemeld</span>
                               </div>
                               {ev.sponsor_logo && <img src={ev.sponsor_logo} alt={ev.sponsor_name} style={{ height:24, marginTop:8, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />}
                             </div>
-                            <span style={{ fontSize:22, color:"#bbb", flexShrink:0 }}>›</span>
+                            <span style={{ fontSize:22, color:"#c2bfb2", flexShrink:0 }}>›</span>
                           </div>
                           {canEdit && (
                             <div style={{ marginTop:12, display:"flex", gap:6, flexWrap:"wrap" }} onClick={e=>e.stopPropagation()}>
@@ -1378,21 +1384,21 @@ export default function HHCEvents() {
             {news.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
                 <div style={{ fontSize:48, marginBottom:16 }}>📢</div>
-                <div style={{ color:"#444", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen mededelingen</div>
+                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen mededelingen</div>
                 {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNewNews}>Eerste mededeling plaatsen</button>}
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {news.map(n => (
-                  <div key={n.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:`4px solid ${n.pinned?primaryColor:"#d8cfb8"}`, borderRadius:8, padding:"16px 20px" }}>
+                  <div key={n.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${n.pinned?primaryColor:"#e7e4da"}`, borderRadius:8, padding:"16px 20px" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                         {n.pinned && <span title="Vastgepind">📌</span>}
                         <span style={{ fontSize:18, fontWeight:800, textTransform:"uppercase" }}>{n.title}</span>
                       </div>
-                      <span style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
+                      <span style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
                     </div>
-                    <div style={{ fontSize:14, color:"#555", fontFamily:"Barlow,sans-serif", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{n.body}</div>
+                    <div style={{ fontSize:14, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{n.body}</div>
                     {canEdit && (
                       <div style={{ marginTop:12, display:"flex", gap:6 }}>
                         <button className="btn-sm" onClick={()=>openEditNews(n)}>Bewerken</button>
@@ -1416,7 +1422,7 @@ export default function HHCEvents() {
             {bardienst.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
                 <div style={{ fontSize:48, marginBottom:16 }}>🍺</div>
-                <div style={{ color:"#444", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen bardiensten ingepland</div>
+                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen bardiensten ingepland</div>
                 {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNewBardienst}>Eerste bardienst toevoegen</button>}
               </div>
             ) : (
@@ -1426,10 +1432,10 @@ export default function HHCEvents() {
                   const inThisWeek = d >= thisWeekStart && d < thisWeekEnd;
                   const past = d < thisWeekStart;
                   return (
-                    <div key={b.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:`4px solid ${inThisWeek?primaryColor:"#d8cfb8"}`, borderRadius:8, padding:"14px 20px", opacity:past?.5:1, display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
+                    <div key={b.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${inThisWeek?primaryColor:"#e7e4da"}`, borderRadius:8, padding:"14px 20px", opacity:past?.5:1, display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
                       <div style={{ minWidth:100 }}>
                         <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{formatDate(b.shift_date)}</div>
-                        {b.time_label && <div style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif" }}>{b.time_label}</div>}
+                        {b.time_label && <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{b.time_label}</div>}
                       </div>
                       <div style={{ flex:1, minWidth:180 }}>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -1437,7 +1443,7 @@ export default function HHCEvents() {
                             <span key={i} style={{ background:primaryColor+"22", color:primaryColor, borderRadius:20, padding:"3px 12px", fontSize:13, fontWeight:700 }}>{n}</span>
                           ))}
                         </div>
-                        {b.note && <div style={{ fontSize:13, color:"#666", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{b.note}</div>}
+                        {b.note && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{b.note}</div>}
                       </div>
                       {inThisWeek && <span className="badge" style={{ background:primaryColor+"22", color:primaryColor }}>Deze week</span>}
                       {canEdit && (
@@ -1466,37 +1472,39 @@ export default function HHCEvents() {
             {calView==="month" && (
               <div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <button className="btn-sm" onClick={()=>setCalDate(d=>{ const m=d.month===0?11:d.month-1; return {year:d.month===0?d.year-1:d.year,month:m}; })}>←</button>
-                    <span style={{ fontSize:20, fontWeight:700, minWidth:180, textAlign:"center", textTransform:"uppercase" }}>{MONTHS_NL[calDate.month]} {calDate.year}</span>
-                    <button className="btn-sm" onClick={()=>setCalDate(d=>{ const m=d.month===11?0:d.month+1; return {year:d.month===11?d.year+1:d.year,month:m}; })}>→</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                    <button onClick={()=>setCalDate(d=>{ const m=d.month===0?11:d.month-1; return {year:d.month===0?d.year-1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"#2E3192", color:"#fff", width:38, height:38, borderRadius:4, fontSize:18, fontWeight:700 }}>‹</button>
+                    <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:30, color:"#2E3192", textTransform:"uppercase", minWidth:220, textAlign:"center" }}>{MONTHS_NL[calDate.month]} {calDate.year}</span>
+                    <button onClick={()=>setCalDate(d=>{ const m=d.month===11?0:d.month+1; return {year:d.month===11?d.year+1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"#2E3192", color:"#fff", width:38, height:38, borderRadius:4, fontSize:18, fontWeight:700 }}>›</button>
                   </div>
                   <div style={{ display:"flex", gap:8 }}>
-                    <button className="btn-sm" onClick={()=>setCalDate({year:new Date().getFullYear(),month:new Date().getMonth()})}>Vandaag</button>
+                    <button onClick={()=>setCalDate({year:new Date().getFullYear(),month:new Date().getMonth()})} style={{ border:"1.5px solid #F18C21", cursor:"pointer", background:"#fff", color:"#F18C21", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:14, textTransform:"uppercase", padding:"8px 18px", borderRadius:4 }}>Vandaag</button>
                     <button className="btn-sm" onClick={()=>window.print()}>🖨 Afdrukken</button>
                   </div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:4 }}>
-                  {DAYS_NL.map(d=><div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:700, color:"#555", padding:"6px 0", textTransform:"uppercase", letterSpacing:1 }}>{d}</div>)}
+                <div style={{ background:"#fff", border:"1px solid #ebe8df", borderRadius:8, padding:16, boxShadow:"0 1px 3px rgba(0,0,0,.04)" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6, marginBottom:6 }}>
+                    {DAYS_NL.map(d=><div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:800, letterSpacing:1, color:"#b0afa9", padding:"4px 0", textTransform:"uppercase" }}>{d}</div>)}
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
+                    {calDays.map((day,i) => {
+                      if (!day) return <div key={`e${i}`} />;
+                      const dayEvs = calEvents.filter(ev => new Date(ev.start_time).getDate()===day.getDate());
+                      const isToday = day.toDateString()===new Date().toDateString();
+                      return (
+                        <div key={day.toISOString()} className={`cal-day ${isToday?"today":""} ${dayEvs.length?"has-events":""}`}>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:isToday?primaryColor:(dayEvs.length?"#1d1f3a":"#c2bfb2"), textAlign:"right", lineHeight:1 }}>{day.getDate()}</div>
+                          {dayEvs.slice(0,2).map(ev => {
+                            const cc = categoryColors[ev.category]||primaryColor;
+                            return <span key={ev.id} className="cal-dot" style={{ background:cc, color:"#fff" }} onClick={()=>setSelectedEvent(ev)} title={ev.title}>{formatTime(ev.start_time)} {ev.title}</span>;
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
-                  {calDays.map((day,i) => {
-                    if (!day) return <div key={`e${i}`} />;
-                    const dayEvs = calEvents.filter(ev => new Date(ev.start_time).getDate()===day.getDate());
-                    const isToday = day.toDateString()===new Date().toDateString();
-                    return (
-                      <div key={day.toISOString()} className={`cal-day ${isToday?"today":""} ${dayEvs.length?"has-events":""}`}>
-                        <div style={{ fontSize:12, color:isToday?primaryColor:"#555", fontWeight:isToday?700:400, padding:"2px 4px" }}>{day.getDate()}</div>
-                        {dayEvs.map(ev => {
-                          const cc = categoryColors[ev.category]||primaryColor;
-                          return <span key={ev.id} className="cal-dot" style={{ background:cc+"33", color:cc }} onClick={()=>setSelectedEvent(ev)} title={ev.title}>{ev.title}</span>;
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:16 }}>
-                  {allCategories.map(cat=><span key={cat} style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, color:"#666", fontFamily:"Barlow,sans-serif" }}><span style={{ width:10, height:10, borderRadius:2, background:categoryColors[cat]||primaryColor, display:"inline-block" }}/>{cat}</span>)}
+                <div style={{ display:"flex", gap:18, flexWrap:"wrap", marginTop:16 }}>
+                  {allCategories.map(cat=><span key={cat} style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:600, color:"#76756f" }}><span style={{ width:12, height:12, borderRadius:3, background:categoryColors[cat]||primaryColor, display:"inline-block" }}/>{cat}</span>)}
                 </div>
               </div>
             )}
@@ -1514,21 +1522,30 @@ export default function HHCEvents() {
         {/* ARCHIEF */}
         {tab==="archief" && (
           <div>
-            <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:20 }}>Evenementenarchief ({pastEvents.length} evenementen)</div>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Archief</span>
+              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{pastEvents.length} events</span>
+              <div style={{ flex:1, height:3, background:"#F18C21" }} />
+            </div>
             {pastEvents.length===0
-              ? <div style={{ color:"#444", fontSize:14, fontFamily:"Barlow,sans-serif" }}>Nog geen verleden evenementen</div>
-              : <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              ? <div style={{ color:"#56554d", fontSize:14, fontFamily:"Barlow,sans-serif" }}>Nog geen verleden evenementen</div>
+              : <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
                   {[...pastEvents].reverse().map(ev => {
                     const cc = categoryColors[ev.category]||primaryColor;
                     const att = (attendees[ev.id]||[]).length;
+                    const d = new Date(ev.start_time);
                     return (
-                      <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ background:"#ffffff", border:`1px solid #e7e0d0`, borderLeft:`3px solid ${cc}`, borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap", cursor:"pointer" }}>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:16, fontWeight:700, textTransform:"uppercase" }}>{ev.title}</div>
-                          <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{formatDate(ev.start_time)} · {ev.location}</div>
+                      <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", alignItems:"center", gap:14, background:"#fff", border:"1px solid #ebe8df", borderLeft:`4px solid ${cc}`, borderRadius:6, padding:"13px 16px", cursor:"pointer" }}>
+                        <div style={{ flex:"none", textAlign:"center", width:50 }}>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:22, color:cc, lineHeight:.85 }}>{d.getDate()}</div>
+                          <div style={{ fontSize:10, fontWeight:800, color:"#b0afa9", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                         </div>
-                        <span className="badge" style={{ background:cc+"22", color:cc }}>{ev.category}</span>
-                        {att>0 && <span style={{ fontSize:13, color:"#888", fontFamily:"Barlow,sans-serif" }}>👥 {att}</span>}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, color:"#1d1f3a", textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
+                          <div style={{ fontSize:13, color:"#76756f", marginTop:4 }}>{formatDate(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
+                        </div>
+                        <span style={{ background:cc+"18", color:cc, fontSize:10, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 10px", borderRadius:20, flex:"none" }}>{ev.category}</span>
+                        {att>0 && <span style={{ fontSize:13, color:"#b0afa9", flex:"none" }}>👥 {att}</span>}
                       </div>
                     );
                   })}
@@ -1539,10 +1556,10 @@ export default function HHCEvents() {
                 <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#6a4c93", marginBottom:14 }}>Gearchiveerd ({archivedEvents.length})</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {archivedEvents.map(ev => (
-                    <div key={ev.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:"3px solid #6a4c93", borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
+                    <div key={ev.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"3px solid #6a4c93", borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:15, fontWeight:700, textTransform:"uppercase" }}>{ev.title}</div>
-                        <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)}</div>
+                        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)}</div>
                       </div>
                       <button className="btn-sm" onClick={()=>handleArchive(ev)}>Herstellen</button>
                       {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
@@ -1555,48 +1572,65 @@ export default function HHCEvents() {
         )}
 
         {/* STATISTIEKEN (admin) */}
-        {tab==="statistieken" && adminMode && (
+        {tab==="statistieken" && adminMode && (() => {
+          const yearEvents = events.filter(e=>new Date(e.start_time).getFullYear()===statsYear);
+          const yearAtt = yearEvents.reduce((s,e)=>s+(attendees[e.id]||[]).length,0);
+          const now = new Date();
+          const thisMonthCount = events.filter(e=>{ const d=new Date(e.start_time); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth(); }).length;
+          return (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
-              <span style={{ fontSize:18, fontWeight:700, textTransform:"uppercase" }}>Evenementen per maand</span>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontStyle:"italic", fontSize:20, color:"#2E3192", textTransform:"uppercase" }}>Statistieken</span>
               <select className="input" value={statsYear} onChange={e=>setStatsYear(Number(e.target.value))} style={{ width:"auto", fontSize:14 }}>
                 {[...new Set(events.map(e=>new Date(e.start_time).getFullYear()))].sort().reverse().map(y=><option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:160, marginBottom:8 }}>
-              {statsMonths.map(m => (
-                <div key={m.month} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                  <div style={{ fontSize:12, color:primaryColor, fontWeight:700 }}>{m.count||""}</div>
-                  <div className="stat-bar" style={{ width:"100%", height:m.count?(m.count/statsMax*120+8):4 }} />
-                  <div style={{ fontSize:10, color:"#555", fontFamily:"Barlow,sans-serif", textTransform:"uppercase" }}>{m.month}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop:32 }}>
-              <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#555", marginBottom:16 }}>Per categorie {statsYear}</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:10 }}>
-                {allCategories.map(cat => {
-                  const cc = categoryColors[cat]||primaryColor;
-                  const count = events.filter(e=>e.category===cat&&new Date(e.start_time).getFullYear()===statsYear).length;
-                  return (
-                    <div key={cat} style={{ background:"#ffffff", border:`1px solid ${cc}33`, borderLeft:`3px solid ${cc}`, borderRadius:6, padding:"14px 16px" }}>
-                      <div style={{ fontSize:11, color:cc, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{cat}</div>
-                      <div style={{ fontSize:32, fontWeight:900, color:cc }}>{count}</div>
-                      <div style={{ fontSize:12, color:"#555", fontFamily:"Barlow,sans-serif" }}>evenementen</div>
-                    </div>
-                  );
-                })}
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginBottom:26 }}>
+              <div style={{ background:"#2E3192", borderRadius:8, padding:"18px 20px" }}>
+                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:44, color:"#fff", lineHeight:.9 }}>{yearEvents.length}</div>
+                <div style={{ fontSize:11, color:"#b9bbe8", textTransform:"uppercase", letterSpacing:1, fontWeight:700 }}>Events in {statsYear}</div>
+              </div>
+              <div style={{ background:"#F18C21", borderRadius:8, padding:"18px 20px" }}>
+                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:44, color:"#fff", lineHeight:.9 }}>{yearAtt}</div>
+                <div style={{ fontSize:11, color:"#fff", textTransform:"uppercase", letterSpacing:1, fontWeight:700, opacity:.85 }}>Aanmeldingen</div>
+              </div>
+              <div style={{ background:"#fff", border:"1px solid #ebe8df", borderRadius:8, padding:"18px 20px" }}>
+                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:44, color:"#2E3192", lineHeight:.9 }}>{thisMonthCount}</div>
+                <div style={{ fontSize:11, color:"#9a988c", textTransform:"uppercase", letterSpacing:1, fontWeight:700 }}>Deze maand</div>
               </div>
             </div>
-            <div style={{ marginTop:32, background:"#ffffff", border:"1px solid #e7e0d0", borderRadius:8, padding:20 }}>
-              <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, marginBottom:12 }}>Totale aanwezigheid {statsYear}</div>
-              <div style={{ fontSize:40, fontWeight:900, color:primaryColor }}>
-                {events.filter(e=>new Date(e.start_time).getFullYear()===statsYear).reduce((s,e)=>s+(attendees[e.id]||[]).length,0)}
+
+            <div style={{ background:"#fff", border:"1px solid #ebe8df", borderRadius:8, padding:"22px 24px", marginBottom:24 }}>
+              <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontStyle:"italic", fontSize:20, color:"#2E3192", textTransform:"uppercase", marginBottom:18 }}>Events per maand · {statsYear}</div>
+              <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:150 }}>
+                {statsMonths.map((m,mi) => (
+                  <div key={m.month} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:6, height:"100%", justifyContent:"flex-end" }}>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:14, color:"#F18C21" }}>{m.count||""}</div>
+                    <div style={{ width:"100%", height:m.count?(14+(m.count/statsMax)*96):3, background:m.count===0?"#ece9e0":(mi===now.getMonth()&&statsYear===now.getFullYear()?"#F18C21":"#2E3192"), borderRadius:"3px 3px 0 0", transition:"height .5s ease" }} />
+                    <div style={{ fontSize:10, fontWeight:700, color:"#b0afa9", textTransform:"uppercase" }}>{m.month}</div>
+                  </div>
+                ))}
               </div>
-              <div style={{ fontSize:13, color:"#555", fontFamily:"Barlow,sans-serif" }}>aanmeldingen via de kalender</div>
+            </div>
+
+            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:"#76756f", textTransform:"uppercase", letterSpacing:2, marginBottom:12 }}>Per categorie</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12 }}>
+              {allCategories.map(cat => {
+                const cc = categoryColors[cat]||primaryColor;
+                const count = yearEvents.filter(e=>e.category===cat).length;
+                return (
+                  <div key={cat} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderTop:`4px solid ${cc}`, borderRadius:8, padding:"16px 18px" }}>
+                    <div style={{ fontSize:11, fontWeight:800, letterSpacing:1, color:cc, textTransform:"uppercase", marginBottom:4 }}>{cat}</div>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:36, color:cc, lineHeight:1 }}>{count}</div>
+                    <div style={{ fontSize:12, color:"#b0afa9" }}>events</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* DASHBOARD (admin) */}
         {tab==="dashboard" && adminMode && (
@@ -1616,20 +1650,20 @@ export default function HHCEvents() {
         {tab==="ideeen" && adminMode && (
           <div>
             <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:8 }}>Ideeënbus ({ideas.length})</div>
-            <div style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Alleen beheerders zien deze ideeën — ze zijn niet zichtbaar voor bezoekers.</div>
+            <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Alleen beheerders zien deze ideeën — ze zijn niet zichtbaar voor bezoekers.</div>
             {ideas.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
                 <div style={{ fontSize:48, marginBottom:16 }}>💡</div>
-                <div style={{ color:"#444", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen ideeën binnengekomen</div>
+                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen ideeën binnengekomen</div>
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {ideas.map(idea => (
-                  <div key={idea.id} style={{ background:"#ffffff", border:"1px solid #e7e0d0", borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px" }}>
+                  <div key={idea.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
                       <div>
                         <div style={{ fontSize:13, fontWeight:700, color:primaryColor }}>{idea.name || "Anoniem"}</div>
-                        <div style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif" }}>{new Date(idea.created_at).toLocaleString("nl-NL")}</div>
+                        <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{new Date(idea.created_at).toLocaleString("nl-NL")}</div>
                       </div>
                       {canEdit && <button className="btn-sm" onClick={()=>handleRemoveIdea(idea.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                     </div>
@@ -1649,69 +1683,70 @@ export default function HHCEvents() {
         const cc = categoryColors[ev.category]||primaryColor;
         return (
           <div className="modal-overlay" onClick={()=>setSelectedEvent(null)}>
-            <div className="modal" style={{ maxWidth:580 }} onClick={e=>e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth:540, padding:0, overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
               {ev.image_url && (
-                <div style={{ margin:"-32px -32px 20px", overflow:"hidden", borderRadius:"12px 12px 0 0", height:180 }}>
+                <div style={{ overflow:"hidden", height:180 }}>
                   <img src={ev.image_url} alt={ev.title} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>e.target.parentElement.style.display="none"} />
                 </div>
               )}
-              <div style={{ borderLeft:`4px solid ${cc}`, paddingLeft:16, marginBottom:20 }}>
-                <span className="badge" style={{ background:cc+"22", color:cc, marginBottom:8, display:"inline-block" }}>{ev.category}</span>
-                {ev.hidden && <span className="badge" style={{ background:"#33300022", color:"#888", marginLeft:6 }}>Verborgen</span>}
-                <h2 style={{ fontSize:26, fontWeight:900, textTransform:"uppercase", lineHeight:1 }}>{ev.title}</h2>
-              </div>
-              <div className="grid-2" style={{ marginBottom:16 }}>
-                <div style={{ background:"#f5f1e6", borderRadius:8, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum</div>
-                  <div style={{ fontSize:15, fontWeight:700 }}>{formatDate(ev.start_time)}</div>
+              <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
+                <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
+                <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
+                  <div>
+                    <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
+                    {ev.hidden && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6 }}>Verborgen</span>}
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:34, lineHeight:.9, color:"#fff", textTransform:"uppercase", marginTop:10 }}>{ev.title}</div>
+                  </div>
+                  <button onClick={()=>setSelectedEvent(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", fontSize:18, flex:"none" }}>✕</button>
                 </div>
-                <div style={{ background:"#f5f1e6", borderRadius:8, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
-                  <div style={{ fontSize:15, fontWeight:700 }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
+              </div>
+              <div style={{ padding:"24px 28px 28px" }}>
+              <div className="grid-2" style={{ marginBottom:16 }}>
+                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14 }}>
+                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum</div>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatDate(ev.start_time)}</div>
+                </div>
+                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14 }}>
+                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
                 </div>
               </div>
               {ev.location && (
-                <div style={{ background:"#f5f1e6", borderRadius:8, padding:14, marginBottom:16 }}>
-                  <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Locatie</div>
-                  <a href={`https://maps.google.com/?q=${encodeURIComponent(ev.location)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize:15, fontWeight:700, color:"#1c1c26", textDecoration:"none", display:"flex", alignItems:"center", gap:8 }}>
-                    📍 {ev.location} <span style={{ fontSize:11, color:primaryColor }}>↗ Google Maps</span>
-                  </a>
-                </div>
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(ev.location)}`} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#f7f6f2", borderRadius:6, padding:14, marginBottom:16, textDecoration:"none" }}>
+                  <div>
+                    <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Locatie</div>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>📍 {ev.location}</div>
+                  </div>
+                  <span style={{ fontSize:12, fontWeight:700, color:"#F18C21" }}>Maps ↗</span>
+                </a>
               )}
               <WeatherWidget location={ev.location} startTime={ev.start_time} />
               {ev.cost > 0 && (
-                <div style={{ background:"#f5f1e6", borderRadius:8, padding:14, marginBottom:16 }}>
-                  <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Kosten deelname</div>
+                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14, marginBottom:16 }}>
+                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Kosten deelname</div>
                   <div style={{ fontSize:24, fontWeight:900, color:"#52b788" }}>€{Number(ev.cost).toFixed(2)}</div>
                 </div>
               )}
               {ev.sponsor_name && (
-                <div style={{ background:"#f5f1e6", borderRadius:8, padding:14, marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
+                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14, marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
                   <div>
-                    <div style={{ fontSize:10, color:"#444", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>Gesponsord door</div>
+                    <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>Gesponsord door</div>
                     <div style={{ fontSize:15, fontWeight:700 }}>🤝 {ev.sponsor_name}</div>
                   </div>
                   {ev.sponsor_logo && <img src={ev.sponsor_logo} alt={ev.sponsor_name} style={{ height:36, objectFit:"contain", marginLeft:"auto" }} onError={e=>e.target.style.display="none"} />}
                 </div>
               )}
-              {ev.description && <div style={{ marginBottom:16, fontFamily:"Barlow,sans-serif", fontSize:15, color:"#aaa", lineHeight:1.6 }}>{ev.description}</div>}
-              {isUpcoming(ev.start_time) && (
-                <div style={{ background:primaryColor+"11", border:`1px solid ${primaryColor}22`, borderRadius:8, padding:10, textAlign:"center", marginBottom:16 }}>
-                  <span style={{ color:primaryColor, fontWeight:700, letterSpacing:1, textTransform:"uppercase", fontSize:13 }}>
-                    {daysUntil(ev.start_time)===0?"🔥 Vandaag!":daysUntil(ev.start_time)===1?"Morgen!":`Over ${daysUntil(ev.start_time)} dagen`}
-                  </span>
-                </div>
-              )}
-              <div style={{ background:"#f5f1e6", borderRadius:8, padding:14, marginBottom:16 }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                  <span style={{ fontSize:13, fontWeight:700 }}>👥 {(attendees[ev.id]||[]).length} aangemeld</span>
-                  <button className="btn-sm" onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }}>Bekijken / Aanmelden</button>
-                </div>
-                {(attendees[ev.id]||[]).slice(0,5).map((a,i)=><span key={i} style={{ fontSize:12, color:"#666", fontFamily:"Barlow,sans-serif", marginRight:8 }}>{a.attendee_name}</span>)}
-                {(attendees[ev.id]||[]).length>5 && <span style={{ fontSize:12, color:"#444" }}>+{(attendees[ev.id]||[]).length-5} meer</span>}
+              {ev.description && <div style={{ marginBottom:18, fontSize:15, color:"#56554d", lineHeight:1.6 }}>{ev.description}</div>}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:cc+"18", borderRadius:6, padding:"14px 16px", marginBottom:18, flexWrap:"wrap", gap:8 }}>
+                <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:cc }}>👥 {(attendees[ev.id]||[]).length} aangemeld</span>
+                {isUpcoming(ev.start_time) && <span style={{ fontSize:12, fontWeight:700, color:cc, textTransform:"uppercase" }}>{daysUntil(ev.start_time)===0?"Vandaag":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)} dagen`}</span>}
+                <button className="btn-sm" onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }} style={{ flex:"none" }}>Bekijken / Aanmelden</button>
               </div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <button className="btn-red" style={{ flex:1, background:"#F18C21", fontStyle:"italic" }} onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }}>Ik kom!</button>
                 <button className="btn-ghost" onClick={()=>setSelectedEvent(null)}>Sluiten</button>
+              </div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:10 }}>
                 <button className="btn-sm" onClick={()=>downloadICS(ev)}>📅 .ics</button>
                 <a href={getGoogleCalendarUrl(ev)} target="_blank" rel="noopener noreferrer" className="btn-sm" style={{ textDecoration:"none", display:"inline-flex", alignItems:"center" }}>📅 Google Calendar</a>
                 <button className="btn-sm" onClick={()=>{ setShowQR(ev); setSelectedEvent(null); }}>QR Code</button>
@@ -1723,6 +1758,7 @@ export default function HHCEvents() {
                     {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                   </>
                 )}
+              </div>
               </div>
             </div>
           </div>
@@ -1738,33 +1774,33 @@ export default function HHCEvents() {
           <div className="modal" style={{ maxWidth:640 }} onClick={e=>e.stopPropagation()}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingEvent?"Bewerken":"Nieuw evenement"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label><input className="input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label><input className="input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label><input className="input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label><input className="input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
               </div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Categorie</label>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Categorie</label>
                   <select className="input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
                     {allCategories.map(c=><option key={c}>{c}</option>)}
                   </select>
                 </div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Locatie</label><input className="input" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="Sportpark De Brug" /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Locatie</label><input className="input" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="Sportpark De Brug" /></div>
               </div>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Beschrijving</label><textarea className="input" rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Extra info..." style={{ resize:"vertical" }} /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Beschrijving</label><textarea className="input" rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Extra info..." style={{ resize:"vertical" }} /></div>
               <div>
-                <label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
+                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
                 <input className="input" value={form.image_url} onChange={e=>setForm(f=>({...f,image_url:e.target.value}))} placeholder="https://... (banner/foto)" />
-                {form.image_url && <img src={form.image_url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:6, border:"1px solid #d8cfb8", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
+                {form.image_url && <img src={form.image_url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:6, border:"1px solid #e7e4da", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
               </div>
               <div className="grid-3">
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Kosten (€)</label><input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e=>setForm(f=>({...f,cost:e.target.value}))} placeholder="0.00" /></div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsornaam</label><input className="input" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))} placeholder="Bakkerij Jansen" /></div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label><input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Kosten (€)</label><input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e=>setForm(f=>({...f,cost:e.target.value}))} placeholder="0.00" /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsornaam</label><input className="input" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))} placeholder="Bakkerij Jansen" /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label><input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." /></div>
               </div>
               <div style={{ display:"flex", gap:16, alignItems:"center" }}>
                 <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.is_public} onChange={e=>setForm(f=>({...f,is_public:e.target.checked}))} style={{ accentColor:primaryColor }} /> Publiek</label>
-                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.hidden} onChange={e=>setForm(f=>({...f,hidden:e.target.checked}))} style={{ accentColor:"#888" }} /> Verborgen</label>
+                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.hidden} onChange={e=>setForm(f=>({...f,hidden:e.target.checked}))} style={{ accentColor:"#76756f" }} /> Verborgen</label>
               </div>
               <div style={{ display:"flex", gap:10, marginTop:8 }}>
                 <button className="btn-red" onClick={handleSave} disabled={saving||!form.title||!form.start_time} style={{ flex:1 }}>{saving?"Opslaan...":editingEvent?"Opslaan":"Toevoegen"}</button>
@@ -1781,10 +1817,10 @@ export default function HHCEvents() {
           <div className="modal" style={{ maxWidth:480 }} onClick={e=>e.stopPropagation()}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingBardienst?"Bardienst bewerken":"Bardienst toevoegen"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Datum *</label><input className="input" type="date" value={bardienstForm.shift_date} onChange={e=>setBardienstForm(f=>({...f,shift_date:e.target.value}))} /></div>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tijd (optioneel)</label><input className="input" value={bardienstForm.time_label} onChange={e=>setBardienstForm(f=>({...f,time_label:e.target.value}))} placeholder="bv. 20:00 – 01:00" /></div>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Namen * (komma-gescheiden)</label><input className="input" value={bardienstForm.names} onChange={e=>setBardienstForm(f=>({...f,names:e.target.value}))} placeholder="Jan, Piet, Marie" /></div>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Notitie</label><input className="input" value={bardienstForm.note} onChange={e=>setBardienstForm(f=>({...f,note:e.target.value}))} placeholder="Extra info" /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Datum *</label><input className="input" type="date" value={bardienstForm.shift_date} onChange={e=>setBardienstForm(f=>({...f,shift_date:e.target.value}))} /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tijd (optioneel)</label><input className="input" value={bardienstForm.time_label} onChange={e=>setBardienstForm(f=>({...f,time_label:e.target.value}))} placeholder="bv. 20:00 – 01:00" /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Namen * (komma-gescheiden)</label><input className="input" value={bardienstForm.names} onChange={e=>setBardienstForm(f=>({...f,names:e.target.value}))} placeholder="Jan, Piet, Marie" /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Notitie</label><input className="input" value={bardienstForm.note} onChange={e=>setBardienstForm(f=>({...f,note:e.target.value}))} placeholder="Extra info" /></div>
               <div style={{ display:"flex", gap:10, marginTop:8 }}>
                 <button className="btn-red" onClick={handleSaveBardienst} disabled={savingBardienst||!bardienstForm.shift_date||!bardienstForm.names} style={{ flex:1 }}>{savingBardienst?"Opslaan...":editingBardienst?"Opslaan":"Toevoegen"}</button>
                 <button className="btn-ghost" onClick={()=>setShowBardienstForm(false)}>Annuleren</button>
@@ -1800,8 +1836,8 @@ export default function HHCEvents() {
           <div className="modal" style={{ maxWidth:520 }} onClick={e=>e.stopPropagation()}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingNews?"Mededeling bewerken":"Mededeling plaatsen"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={newsForm.title} onChange={e=>setNewsForm(f=>({...f,title:e.target.value}))} placeholder="Titel van de mededeling" /></div>
-              <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tekst *</label><textarea className="input" rows={5} value={newsForm.body} onChange={e=>setNewsForm(f=>({...f,body:e.target.value}))} placeholder="Waar gaat het over..." style={{ resize:"vertical" }} /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={newsForm.title} onChange={e=>setNewsForm(f=>({...f,title:e.target.value}))} placeholder="Titel van de mededeling" /></div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tekst *</label><textarea className="input" rows={5} value={newsForm.body} onChange={e=>setNewsForm(f=>({...f,body:e.target.value}))} placeholder="Waar gaat het over..." style={{ resize:"vertical" }} /></div>
               <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={newsForm.pinned} onChange={e=>setNewsForm(f=>({...f,pinned:e.target.checked}))} style={{ accentColor:primaryColor }} /> Vastpinnen bovenaan de agenda</label>
               <div style={{ display:"flex", gap:10, marginTop:8 }}>
                 <button className="btn-red" onClick={handleSaveNews} disabled={savingNews||!newsForm.title||!newsForm.body} style={{ flex:1 }}>{savingNews?"Opslaan...":editingNews?"Opslaan":"Plaatsen"}</button>
@@ -1817,7 +1853,7 @@ export default function HHCEvents() {
         <div className="modal-overlay" onClick={()=>setShowIdeaForm(false)}>
           <div className="modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>💡 Ideeën voor spelerscommissie</h2>
-            <p style={{ color:"#555", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Alleen het bestuur ziet dit — jouw naam is optioneel.</p>
+            <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Alleen het bestuur ziet dit — jouw naam is optioneel.</p>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <input className="input" value={ideaName} onChange={e=>setIdeaName(e.target.value)} placeholder="Jouw naam (optioneel)" />
               <textarea className="input" rows={4} value={ideaMessage} onChange={e=>setIdeaMessage(e.target.value)} placeholder="Wat is je idee voor de spelerscommissie?" style={{ resize:"vertical" }} />
@@ -1835,7 +1871,7 @@ export default function HHCEvents() {
         <div className="modal-overlay" onClick={()=>setShowPinModal(false)}>
           <div className="modal" style={{ maxWidth:380 }} onClick={e=>e.stopPropagation()}>
             <h2 style={{ fontSize:22, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>Beheer</h2>
-            <p style={{ color:"#555", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Voer je pincode in</p>
+            <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Voer je pincode in</p>
             <input className="input" type="password" placeholder="Pincode" value={pinInput} onChange={e=>{ setPinInput(e.target.value); setPinError(false); }} onKeyDown={e=>e.key==="Enter"&&submitPin()} style={{ fontSize:24, letterSpacing:8, textAlign:"center", marginBottom:pinError?8:16 }} autoFocus />
             {pinError && <p style={{ color:"#e63946", fontSize:13, textAlign:"center", marginBottom:16, fontFamily:"Barlow,sans-serif" }}>Verkeerde pincode</p>}
             <div style={{ display:"flex", gap:10 }}>
@@ -1855,17 +1891,17 @@ export default function HHCEvents() {
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Clubinstellingen</div>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:24 }}>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Clubnaam</label><input className="input" value={clubSettings.name} onChange={e=>setClubSettings(s=>({...s,name:e.target.value}))} /></div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Ondertitel</label><input className="input" value={clubSettings.subtitle} onChange={e=>setClubSettings(s=>({...s,subtitle:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Clubnaam</label><input className="input" value={clubSettings.name} onChange={e=>setClubSettings(s=>({...s,name:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Ondertitel</label><input className="input" value={clubSettings.subtitle} onChange={e=>setClubSettings(s=>({...s,subtitle:e.target.value}))} /></div>
               </div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Hoofdkleur</label>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Hoofdkleur</label>
                   <div style={{ display:"flex", gap:8 }}>
                     <input className="input" value={clubSettings.primaryColor} onChange={e=>setClubSettings(s=>({...s,primaryColor:e.target.value}))} />
-                    <input type="color" value={clubSettings.primaryColor} onChange={e=>setClubSettings(s=>({...s,primaryColor:e.target.value}))} style={{ width:44, height:42, border:"1px solid #d8cfb8", borderRadius:6, padding:2, background:"#f5f1e6", cursor:"pointer" }} />
+                    <input type="color" value={clubSettings.primaryColor} onChange={e=>setClubSettings(s=>({...s,primaryColor:e.target.value}))} style={{ width:44, height:42, border:"1px solid #e7e4da", borderRadius:6, padding:2, background:"#f3f1ea", cursor:"pointer" }} />
                   </div>
                 </div>
-                <div><label style={{ fontSize:11, color:"#555", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Logo URL</label><input className="input" value={clubSettings.logo} onChange={e=>setClubSettings(s=>({...s,logo:e.target.value}))} placeholder="Standaard HHC&#8217;09-logo (laat leeg om te gebruiken)" /></div>
+                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Logo URL</label><input className="input" value={clubSettings.logo} onChange={e=>setClubSettings(s=>({...s,logo:e.target.value}))} placeholder="Standaard HHC&#8217;09-logo (laat leeg om te gebruiken)" /></div>
               </div>
             </div>
 
@@ -1875,8 +1911,8 @@ export default function HHCEvents() {
                 <div key={cat} className="settings-row">
                   <span style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>{cat}</span>
                   <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <input className="input" value={categoryColors[cat]||"#888"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:100, fontSize:13 }} />
-                    <input type="color" value={categoryColors[cat]||"#888"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:36, height:36, border:"1px solid #d8cfb8", borderRadius:6, padding:2, background:"#f5f1e6", cursor:"pointer" }} />
+                    <input className="input" value={categoryColors[cat]||"#76756f"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:100, fontSize:13 }} />
+                    <input type="color" value={categoryColors[cat]||"#76756f"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:36, height:36, border:"1px solid #e7e4da", borderRadius:6, padding:2, background:"#f3f1ea", cursor:"pointer" }} />
                   </div>
                 </div>
               ))}
@@ -1884,13 +1920,13 @@ export default function HHCEvents() {
             </div>
 
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Beheerders pincodes</div>
-            <div style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif", marginBottom:10 }}>Pincodes worden gehasht opgeslagen en server-side gecontroleerd — daarom is de code zelf hier niet meer zichtbaar.</div>
+            <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:10 }}>Pincodes worden gehasht opgeslagen en server-side gecontroleerd — daarom is de code zelf hier niet meer zichtbaar.</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:12 }}>
               {pinsList.map(p => (
                 <div key={p.id} className="settings-row">
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <span style={{ fontSize:10, background:primaryColor+"22", color:primaryColor, padding:"2px 8px", borderRadius:10, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[p.role]||p.role}</span>
-                    <span style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif" }}>sinds {new Date(p.created_at).toLocaleDateString("nl-NL")}</span>
+                    <span style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>sinds {new Date(p.created_at).toLocaleDateString("nl-NL")}</span>
                   </div>
                   {pinsList.length>1 && <button className="btn-sm" onClick={()=>handleRemovePin(p.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                 </div>
@@ -1905,7 +1941,7 @@ export default function HHCEvents() {
             </div>
 
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Systeemstatus</div>
-            <div style={{ fontSize:12, color:"#888", fontFamily:"Barlow,sans-serif", marginBottom:10 }}>Het gratis Supabase-project pauzeert automatisch na 7 dagen zonder activiteit. Test hier de verbinding — dat telt meteen als activiteit.</div>
+            <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:10 }}>Het gratis Supabase-project pauzeert automatisch na 7 dagen zonder activiteit. Test hier de verbinding — dat telt meteen als activiteit.</div>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24, flexWrap:"wrap" }}>
               <button className="btn-sm" onClick={testConnection} disabled={testingConnection}>{testingConnection?"Bezig...":"🔌 Verbinding testen"}</button>
               {connectionResult && (
