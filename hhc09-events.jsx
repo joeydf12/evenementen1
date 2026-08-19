@@ -1377,8 +1377,10 @@ export default function HHCEvents() {
         {/* NIEUWS */}
         {tab==="nieuws" && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
-              <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor }}>Mededelingen</div>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Mededelingen</span>
+              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{news.length}</span>
+              <div style={{ flex:1, height:3, background:"#F18C21", minWidth:20 }} />
               {canEdit && <button className="btn-red" onClick={openNewNews}>+ Mededeling plaatsen</button>}
             </div>
             {news.length === 0 ? (
@@ -1390,15 +1392,15 @@ export default function HHCEvents() {
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {news.map(n => (
-                  <div key={n.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${n.pinned?primaryColor:"#e7e4da"}`, borderRadius:8, padding:"16px 20px" }}>
+                  <div key={n.id} className="ev-card" style={{ cursor:"default", borderLeft:n.pinned?"4px solid #F18C21":"1px solid #ebe8df" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                         {n.pinned && <span title="Vastgepind">📌</span>}
-                        <span style={{ fontSize:18, fontWeight:800, textTransform:"uppercase" }}>{n.title}</span>
+                        <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", color:"#1d1f3a" }}>{n.title}</span>
                       </div>
-                      <span style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
+                      <span style={{ fontSize:12, color:"#b0afa9" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
                     </div>
-                    <div style={{ fontSize:14, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{n.body}</div>
+                    <div style={{ fontSize:14, color:"#76756f", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{n.body}</div>
                     {canEdit && (
                       <div style={{ marginTop:12, display:"flex", gap:6 }}>
                         <button className="btn-sm" onClick={()=>openEditNews(n)}>Bewerken</button>
@@ -1415,8 +1417,10 @@ export default function HHCEvents() {
         {/* BARDIENST */}
         {tab==="bardienst" && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:10 }}>
-              <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor }}>Bardienstrooster</div>
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Bardienstrooster</span>
+              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{bardienst.length} diensten</span>
+              <div style={{ flex:1, height:3, background:"#F18C21", minWidth:20 }} />
               {canEdit && <button className="btn-red" onClick={openNewBardienst}>+ Bardienst toevoegen</button>}
             </div>
             {bardienst.length === 0 ? (
@@ -1431,23 +1435,30 @@ export default function HHCEvents() {
                   const d = new Date(b.shift_date);
                   const inThisWeek = d >= thisWeekStart && d < thisWeekEnd;
                   const past = d < thisWeekStart;
+                  const cc = inThisWeek ? "#F18C21" : "#2E3192";
                   return (
-                    <div key={b.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${inThisWeek?primaryColor:"#e7e4da"}`, borderRadius:8, padding:"14px 20px", opacity:past?.5:1, display:"flex", alignItems:"center", gap:16, flexWrap:"wrap" }}>
-                      <div style={{ minWidth:100 }}>
-                        <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{formatDate(b.shift_date)}</div>
-                        {b.time_label && <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{b.time_label}</div>}
-                      </div>
-                      <div style={{ flex:1, minWidth:180 }}>
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                          {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
-                            <span key={i} style={{ background:primaryColor+"22", color:primaryColor, borderRadius:20, padding:"3px 12px", fontSize:13, fontWeight:700 }}>{n}</span>
-                          ))}
+                    <div key={b.id} className="ev-card" style={{ opacity:past?.5:1, cursor:"default" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                        <div style={{ background:cc, color:"#fff", borderRadius:8, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{d.getDate()}</div>
+                          <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                         </div>
-                        {b.note && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{b.note}</div>}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
+                            {inThisWeek && <span className="badge" style={{ background:cc+"22", color:cc }}>Deze week</span>}
+                            {b.time_label && <span style={{ fontSize:13, color:"#76756f" }}>🕐 {b.time_label}</span>}
+                          </div>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1, color:"#1d1f3a" }}>{formatDate(b.shift_date)}</div>
+                          <div style={{ marginTop:8, display:"flex", flexWrap:"wrap", gap:6 }}>
+                            {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
+                              <span key={i} style={{ background:cc+"22", color:cc, borderRadius:20, padding:"3px 12px", fontSize:13, fontWeight:700 }}>{n}</span>
+                            ))}
+                          </div>
+                          {b.note && <div style={{ fontSize:14, color:"#76756f", marginTop:8, lineHeight:1.4 }}>{b.note}</div>}
+                        </div>
                       </div>
-                      {inThisWeek && <span className="badge" style={{ background:primaryColor+"22", color:primaryColor }}>Deze week</span>}
                       {canEdit && (
-                        <div style={{ display:"flex", gap:6 }}>
+                        <div style={{ marginTop:12, display:"flex", gap:6, flexWrap:"wrap" }}>
                           <button className="btn-sm" onClick={()=>openEditBardienst(b)}>Bewerken</button>
                           {canDelete && <button className="btn-sm" onClick={()=>handleDeleteBardienst(b.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                         </div>
