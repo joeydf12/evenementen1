@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -9,6 +9,7 @@ const DEFAULT_COLORS = { Evenement:"#F18C21", Vergadering:"#2E3192", Overig:"#2F
 const MONTHS_NL = ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"];
 const DAYS_NL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
 const ROLE_LABELS = { viewer:"Bekijker", editor:"Redacteur", super:"Beheerder" };
+const DEFAULT_CHECKLIST_ITEMS = ["Bier/frisdrank aangevuld", "Kleingeld/kassa gecontroleerd", "Voorraad koffie/thee", "Afsluiten & apparatuur uit"]; // nieuw #38
 
 // `prefer` defaults to "return=representation" (ask PostgREST to hand back the
 // row). For tables that are insert-only for anon with no SELECT policy (like
@@ -52,8 +53,80 @@ function getStoredSession() {
 function loadLS(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
 function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
+// Verbetering #6/#21: vergelijkt een formulierstate met de staat bij het openen,
+// om te kunnen waarschuwen voor niet-opgeslagen wijzigingen bij het sluiten.
+function isDirty(current, initial) {
+  if (!initial) return false;
+  return JSON.stringify(current) !== JSON.stringify(initial);
+}
+
+// Verbetering #23: contrast van een categoriekleur tegen witte tekst (WCAG-formule),
+// zodat een te lichte kleur in de instellingen gesignaleerd kan worden.
+function hexToRgb(hex) {
+  const h = (hex || "").replace("#", "").trim();
+  const full = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+  if (!/^[0-9a-f]{6}$/i.test(full)) return null;
+  const num = parseInt(full, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+function relLuminance([r, g, b]) {
+  const [R, G, B] = [r, g, b].map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+function contrastWithWhite(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 21;
+  return 1.05 / (relLuminance(rgb) + 0.05);
+}
+
+// Verbetering #34: houdt een net gefocust veld in een modal zichtbaar boven het
+// (mobiele) toetsenbord, i.p.v. dat de gebruiker zelf moet scrollen.
+function handleModalFocus(e) {
+  const t = e.target;
+  if (t && t.matches && t.matches("input,textarea,select")) {
+    setTimeout(() => t.scrollIntoView({ block:"center", behavior:"smooth" }), 60);
+  }
+}
+
 function formatDate(dt) { if (!dt) return ""; return new Date(dt).toLocaleDateString("nl-NL", { weekday:"long", day:"numeric", month:"long" }); }
 function formatTime(dt) { if (!dt) return ""; return new Date(dt).toLocaleTimeString("nl-NL", { hour:"2-digit", minute:"2-digit" }); }
+
+// Nieuw #2: meerdaagse evenementen -- valt "dag" (middernacht) binnen [start,end], op datum vergeleken (niet op tijd)?
+function isMultiDay(ev) { return ev.end_time && toDateStr(new Date(ev.start_time)) !== toDateStr(new Date(ev.end_time)); }
+function dayInRange(day, startTime, endTime) {
+  const d = toDateStr(day);
+  const s = toDateStr(new Date(startTime));
+  const e = endTime ? toDateStr(new Date(endTime)) : s;
+  return d >= s && d <= e;
+}
+function formatRange(startTime, endTime) {
+  if (!isMultiDay({ start_time:startTime, end_time:endTime })) return formatDate(startTime);
+  return `${formatDate(startTime)} t/m ${formatDate(endTime)}`;
+}
+
+// Nieuw #1: terugkerende events. De datetime-local velden ("YYYY-MM-DDTHH:mm") worden
+// door de rest van de app als lokale, naïeve strings behandeld (zie openEdit: ev.start_time.slice(0,16)) --
+// deze helpers rekenen in diezelfde vorm, zodat gegenereerde occurrences zich identiek gedragen
+// aan een handmatig aangemaakt event.
+function toDatetimeLocalStr(d) {
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function computeRecurrenceStarts(startLocalStr, freq, until, count) {
+  const first = new Date(startLocalStr);
+  const untilDate = until ? new Date(until + "T23:59:59") : null;
+  const maxCount = Math.min(count ? parseInt(count, 10) : 52, 104); // hard veiligheidsplafond
+  const out = [first];
+  for (let i = 1; i < maxCount; i++) {
+    const d = new Date(startLocalStr);
+    if (freq === "weekly") d.setDate(d.getDate() + 7 * i);
+    else if (freq === "monthly") d.setMonth(d.getMonth() + i);
+    else break;
+    if (untilDate && d > untilDate) break;
+    out.push(d);
+  }
+  return out;
+}
 function isUpcoming(dt) { return new Date(dt) >= new Date(); }
 function daysUntil(dt) { return Math.ceil((new Date(dt) - new Date()) / 86400000); }
 
@@ -307,7 +380,7 @@ function WeatherWidget({ location, startTime }) {
 }
 
 // ---- ADMIN DASHBOARD ----
-function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, primaryColor, allCategories, categoryColors, onSelectEvent, onGoTab, onNewEvent, onNewBardienst, onNewNews, onOpenSettings }) {
+function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, pinResets, primaryColor, allCategories, categoryColors, onSelectEvent, onGoTab, onNewEvent, onNewBardienst, onNewNews, onOpenSettings }) {
   const now = new Date();
   const upcoming = events.filter(e => !e.archived && !e.hidden && isUpcoming(e.start_time));
   const past = events.filter(e => !e.archived && !isUpcoming(e.start_time));
@@ -356,6 +429,7 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
     ...(eventsMissingLocation > 0 ? [{ type:"info", icon:"📍", text:`${eventsMissingLocation} komend${eventsMissingLocation===1?"":"e"} event${eventsMissingLocation===1?"":"s"} zonder locatie`, action:()=>onGoTab("agenda") }] : []),
     ...(eventsMissingDescription > 0 ? [{ type:"info", icon:"📝", text:`${eventsMissingDescription} komend${eventsMissingDescription===1?"":"e"} event${eventsMissingDescription===1?"":"s"} zonder beschrijving`, action:()=>onGoTab("agenda") }] : []),
     ...(ideas.length > 0 ? [{ type:"idea", icon:"💡", text:`${ideas.length} idee${ideas.length===1?"":"ën"} van leden om te bekijken`, action:()=>onGoTab("ideeen") }] : []),
+    ...((pinResets?.length > 0) ? [{ type:"warn", icon:"🔑", text:`${pinResets.length} pincode-verzoek${pinResets.length===1?"":"en"} wacht${pinResets.length===1?"":"en"} op afhandeling`, action:onOpenSettings }] : []),
   ];
 
   return (
@@ -399,7 +473,7 @@ function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, p
           <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#56554d", marginBottom:10 }}>Eerstvolgende event</div>
           <div onClick={()=>onSelectEvent(nextEvent)} style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderRadius:8, padding:"16px 20px", cursor:"pointer", animation:"fadeInUp .3s .1s both" }}>
             <div style={{ fontSize:18, fontWeight:800, textTransform:"uppercase" }}>{nextEvent.title}</div>
-            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:4 }}>{formatDate(nextEvent.start_time)} · {nextEvent.location||"Locatie onbekend"}</div>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:4 }}>{formatDate(nextEvent.start_time)}{nextEvent.location?` · ${nextEvent.location}`:""}</div>
             <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:12 }}>
               <span className="badge" style={{ background:(categoryColors[nextEvent.category]||primaryColor)+"22", color:categoryColors[nextEvent.category]||primaryColor }}>{nextEvent.category}</span>
               <span style={{ fontSize:12, color:primaryColor, fontWeight:700 }}>Over {daysUntil(nextEvent.start_time)} dagen</span>
@@ -538,7 +612,7 @@ function WeekView({ events, weekStart, onWeekChange, categoryColors, primaryColo
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
         {days.map((day,i) => {
           const isToday = day.toDateString()===today.toDateString();
-          const dayEvs = events.filter(e => !e.archived && (!e.hidden||adminMode) && new Date(e.start_time).toDateString()===day.toDateString());
+          const dayEvs = events.filter(e => !e.archived && (!e.hidden||adminMode) && dayInRange(day, e.start_time, e.end_time));
           return (
             <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#ebe8df"}`, borderRadius:6, padding:"6px 4px" }}>
               <div style={{ fontSize:9, color:isToday?primaryColor:"#56554d", fontWeight:700, textTransform:"uppercase", textAlign:"center", marginBottom:2 }}>{DAYS_NL[i]}</div>
@@ -626,7 +700,9 @@ export default function HHCEvents() {
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [form, setForm] = useState({ title:"", description:"", location:"", start_time:"", end_time:"", category:"Evenement", is_public:true, hidden:false, sponsor_name:"", sponsor_logo:"", image_url:"", cost:"" });
+  const formInitialRef = useRef(null); // verbetering #6/#21: snapshot bij openen, voor de onopgeslagen-wijzigingen-check
   const [saving, setSaving] = useState(false);
+  const [recurrence, setRecurrence] = useState({ freq:"none", until:"", count:"" }); // nieuw #1: alleen bij nieuw event
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showQR, setShowQR] = useState(null);
   const [showAttendees, setShowAttendees] = useState(null);
@@ -638,6 +714,7 @@ export default function HHCEvents() {
   const [toast, setToast] = useState(null);
 
   // Search & filters
+  const [searchInput, setSearchInput] = useState(""); // verbetering #9: ruwe invoer, gedebouncet naar searchQuery
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -648,6 +725,24 @@ export default function HHCEvents() {
   const [eventsOrder, setEventsOrder] = useState([]);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+
+  // Nieuw #179: prullenbak
+  const [trashedEvents, setTrashedEvents] = useState([]);
+  // Nieuw #40: teams (bardienst per team)
+  const [teams, setTeams] = useState([]);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamColor, setNewTeamColor] = useState("#2E3192");
+  // Nieuw #3: eventreeksen/toernooien
+  const [eventSeries, setEventSeries] = useState([]);
+  const [newSeriesTitle, setNewSeriesTitle] = useState("");
+  // Nieuw #178: bulk-bewerken events
+  const [selectedEventIds, setSelectedEventIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  // Nieuw #184: pincode-vergeten-flow
+  const [showForgotPin, setShowForgotPin] = useState(false);
+  const [forgotPinMessage, setForgotPinMessage] = useState("");
+  const [forgotPinSent, setForgotPinSent] = useState(false);
+  const [pinResets, setPinResets] = useState([]);
 
   const [categoryColors, setCategoryColors] = useState(() => loadLS("hhc09_cat_colors", DEFAULT_COLORS));
   const [clubSettings, setClubSettings] = useState(() => loadLS("hhc09_club_settings", { name:"Heusden Herpt Combinatie", subtitle:"Clubagenda", primaryColor:"#2E3192", logo:"" }));
@@ -661,15 +756,18 @@ export default function HHCEvents() {
   const [bardienst, setBardienst] = useState([]);
   const [showBardienstForm, setShowBardienstForm] = useState(false);
   const [editingBardienst, setEditingBardienst] = useState(null);
-  const [bardienstForm, setBardienstForm] = useState({ shift_date:"", time_label:"", names:"", note:"" });
+  const [bardienstForm, setBardienstForm] = useState({ shift_date:"", time_label:"", names:"", note:"", checklistText:DEFAULT_CHECKLIST_ITEMS.join("\n"), team_id:"" });
+  const bardienstFormInitialRef = useRef(null);
   const [savingBardienst, setSavingBardienst] = useState(false);
 
   // Mededelingen (nieuws)
   const [news, setNews] = useState([]);
   const [showNewsForm, setShowNewsForm] = useState(false);
   const [editingNews, setEditingNews] = useState(null);
-  const [newsForm, setNewsForm] = useState({ title:"", body:"", pinned:false });
+  const [newsForm, setNewsForm] = useState({ title:"", body:"", pinned:false, images:[""] });
+  const newsFormInitialRef = useRef(null);
   const [savingNews, setSavingNews] = useState(false);
+  const [selectedNews, setSelectedNews] = useState(null);
 
   // Ideeënbus
   const [ideas, setIdeas] = useState([]);
@@ -689,6 +787,8 @@ export default function HHCEvents() {
   }
 
   useEffect(() => { load(); }, []);
+  // Verbetering #9: filtert pas 200ms na de laatste toetsaanslag, i.p.v. bij elke toets de hele lijst te filteren.
+  useEffect(() => { const t = setTimeout(() => setSearchQuery(searchInput), 200); return () => clearTimeout(t); }, [searchInput]);
   useEffect(() => { saveLS("hhc09_cat_colors", categoryColors); }, [categoryColors]);
   useEffect(() => { saveLS("hhc09_club_settings", clubSettings); }, [clubSettings]);
   useEffect(() => {
@@ -696,6 +796,10 @@ export default function HHCEvents() {
       adminApi({ action:"pins", op:"list", token:adminToken }).then(res => {
         if (res.ok) setPinsList(res.data?.data || []);
         else if (res.status === 401) sessionExpired();
+      });
+      // Nieuw #184: openstaande "pincode kwijt"-verzoeken voor de super
+      adminApi({ action:"pinResets", op:"list", token:adminToken }).then(res => {
+        if (res.ok) setPinResets(res.data?.data || []);
       });
     }
   }, [showSettings, adminMode]);
@@ -743,13 +847,20 @@ export default function HHCEvents() {
       setNews(cached.news || []);
       setLoading(false);
     }
-    const endpoint = adminMode ? "events?order=start_time.asc" : "events?order=start_time.asc&is_public=eq.true";
+    // Verbetering/nieuw #179: deleted_at=is.null zodat zachtverwijderde events nergens
+    // in de normale app meer opduiken -- die leven alleen nog in de prullenbak hieronder.
+    const endpoint = adminMode
+      ? "events?order=start_time.asc&deleted_at=is.null"
+      : "events?order=start_time.asc&is_public=eq.true&deleted_at=is.null";
     try {
-      const [evs, atts, bd, nw] = await Promise.all([
+      const [evs, atts, bd, nw, trashed, tms, srs] = await Promise.all([
         sb(endpoint),
         sb("event_attendees?select=event_id,attendee_name"),
         sb("bardienst?order=shift_date.asc"),
         sb("mededelingen?order=pinned.desc,created_at.desc"),
+        adminMode ? sb("events?deleted_at=not.is.null&order=deleted_at.desc") : Promise.resolve([]),
+        sb("teams?order=name.asc"),
+        sb("event_series?order=created_at.desc"),
       ]);
       const evList = Array.isArray(evs) ? evs : [];
       const attMap = {};
@@ -761,6 +872,9 @@ export default function HHCEvents() {
       setAttendees(attMap);
       setBardienst(bdList);
       setNews(nwList);
+      setTrashedEvents(Array.isArray(trashed) ? trashed : []);
+      setTeams(Array.isArray(tms) ? tms : []);
+      setEventSeries(Array.isArray(srs) ? srs : []);
       saveLS("hhc09_events_cache", { events:evList, attendees:attMap, bardienst:bdList, news:nwList, ts:Date.now() });
       setOffline(false);
     } catch {
@@ -783,7 +897,31 @@ export default function HHCEvents() {
   async function handleSave() {
     if (!form.title || !form.start_time) return;
     setSaving(true);
-    const payload = { ...form, cost:form.cost ? parseFloat(form.cost) : null, end_time:form.end_time || null };
+    const payload = { ...form, cost:form.cost ? parseFloat(form.cost) : null, end_time:form.end_time || null, series_id:form.series_id || null };
+
+    // Nieuw #1: terugkerende events -- alleen bij het aanmaken van een nieuw event.
+    // Genereert losse rijen (elk gewoon een normaal event) i.p.v. herhaling on-the-fly te berekenen,
+    // zodat aanmeldingen/QR/bardienst per instantie los blijven werken zoals bij elk ander event.
+    if (!editingEvent && recurrence.freq !== "none") {
+      const starts = computeRecurrenceStarts(form.start_time, recurrence.freq, recurrence.until, recurrence.count);
+      const durationMs = form.end_time ? (new Date(form.end_time) - new Date(form.start_time)) : null;
+      const ruleForDisplay = { freq:recurrence.freq, until:recurrence.until||null, count:starts.length };
+
+      const firstPayload = { ...payload, start_time:toDatetimeLocalStr(starts[0]), end_time:durationMs!=null?toDatetimeLocalStr(new Date(starts[0].getTime()+durationMs)):null, recurrence_rule:ruleForDisplay };
+      const firstRes = await adminWrite("events", "POST", null, firstPayload);
+      if (!firstRes.ok) { setSaving(false); return; }
+      const parentId = firstRes.data?.[0]?.id;
+
+      for (const d of starts.slice(1)) {
+        const childPayload = { ...payload, start_time:toDatetimeLocalStr(d), end_time:durationMs!=null?toDatetimeLocalStr(new Date(d.getTime()+durationMs)):null, recurrence_rule:ruleForDisplay, recurrence_parent_id:parentId||null };
+        await adminWrite("events", "POST", null, childPayload);
+      }
+      setSaving(false);
+      await load(); setShowForm(false);
+      showToast(`${starts.length} events aangemaakt (herhaling)`);
+      return;
+    }
+
     const res = editingEvent
       ? await adminWrite("events", "PATCH", editingEvent.id, payload)
       : await adminWrite("events", "POST", null, payload);
@@ -793,12 +931,51 @@ export default function HHCEvents() {
     showToast(editingEvent ? "Event bijgewerkt" : "Event toegevoegd");
   }
 
+  // Nieuw #179: verwijderen is nu een soft delete (deleted_at) i.p.v. direct definitief --
+  // het event verdwijnt uit de app maar is te herstellen vanuit de prullenbak in Archief.
   async function handleDelete(id) {
-    if (!confirm("Evenement definitief verwijderen?")) return;
-    const res = await adminWrite("events", "DELETE", id);
+    if (!confirm("Evenement verwijderen? Je kunt dit nog 30 dagen terugvinden in de prullenbak.")) return;
+    const res = await adminWrite("events", "PATCH", id, { deleted_at: new Date().toISOString() });
     if (!res.ok) return;
     await load(); setSelectedEvent(null);
     showToast("Event verwijderd", "error");
+  }
+
+  async function handleRestoreDeleted(id) {
+    const res = await adminWrite("events", "PATCH", id, { deleted_at: null });
+    if (!res.ok) return;
+    await load();
+    showToast("Event hersteld");
+  }
+
+  // Nieuw #178: bulk-bewerken -- meerdere events tegelijk archiveren/verwijderen/verplaatsen.
+  function toggleEventSelected(id) {
+    setSelectedEventIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  }
+  async function bulkPatchEvents(payload, successMsg) {
+    if (selectedEventIds.size === 0) return;
+    setBulkBusy(true);
+    const res = await adminApi({ action:"bulkWrite", token:adminToken, table:"events", method:"PATCH", ids:[...selectedEventIds], payload });
+    setBulkBusy(false);
+    if (res.status === 401) { sessionExpired(); return; }
+    if (!res.ok) { showToast(res.data?.error || "Bulkactie mislukt", "error"); return; }
+    setSelectedEventIds(new Set());
+    await load();
+    showToast(successMsg);
+  }
+  function bulkArchive() { bulkPatchEvents({ archived:true }, `${selectedEventIds.size} events gearchiveerd`); }
+  function bulkDelete() {
+    if (!confirm(`${selectedEventIds.size} events verwijderen? Ze zijn nog 30 dagen terug te vinden in de prullenbak.`)) return;
+    bulkPatchEvents({ deleted_at:new Date().toISOString() }, `${selectedEventIds.size} events verwijderd`);
+  }
+  function bulkSetCategory(category) { if (category) bulkPatchEvents({ category }, `${selectedEventIds.size} events verplaatst naar "${category}"`); }
+
+  async function handlePermanentDelete(id) {
+    if (!confirm("Definitief verwijderen? Dit kan niet meer ongedaan worden gemaakt.")) return;
+    const res = await adminWrite("events", "DELETE", id);
+    if (!res.ok) return;
+    await load();
+    showToast("Definitief verwijderd", "error");
   }
 
   async function handleArchive(ev) {
@@ -824,15 +1001,36 @@ export default function HHCEvents() {
   }
 
   async function handleSaveBardienst() {
-    if (!bardienstForm.shift_date || !bardienstForm.names) return;
+    if (!bardienstForm.shift_date || (!bardienstForm.names && !bardienstForm.team_id)) return;
     setSavingBardienst(true);
+    // Nieuw #38: checklist-items uit het formulier omzetten, met behoud van reeds afgevinkte items.
+    const prevChecklist = editingBardienst?.checklist || [];
+    const checklist = bardienstForm.checklistText.split("\n").map(s=>s.trim()).filter(Boolean)
+      .map(item => ({ item, done: !!prevChecklist.find(c=>c.item===item)?.done }));
+    const payload = { shift_date:bardienstForm.shift_date, time_label:bardienstForm.time_label, names:bardienstForm.names, note:bardienstForm.note, checklist, team_id:bardienstForm.team_id||null };
     const res = editingBardienst
-      ? await adminWrite("bardienst", "PATCH", editingBardienst.id, bardienstForm)
-      : await adminWrite("bardienst", "POST", null, bardienstForm);
+      ? await adminWrite("bardienst", "PATCH", editingBardienst.id, payload)
+      : await adminWrite("bardienst", "POST", null, payload);
     setSavingBardienst(false);
     if (!res.ok) return;
     await load(); setShowBardienstForm(false);
     showToast(editingBardienst ? "Bardienst bijgewerkt" : "Bardienst toegevoegd");
+  }
+
+  // Nieuw #34: aanwezigheid per naam bijhouden op een bardienst.
+  async function toggleAttendance(b, name) {
+    const current = (b.attendance && b.attendance[name]) || "present";
+    const next = current === "no_show" ? "present" : "no_show";
+    const attendance = { ...(b.attendance||{}), [name]:next };
+    await adminWrite("bardienst", "PATCH", b.id, { attendance });
+    await load();
+  }
+
+  // Nieuw #38: één checklist-item afvinken/loskoppelen.
+  async function toggleChecklistItem(b, idx) {
+    const checklist = (b.checklist||[]).map((c,i) => i===idx ? { ...c, done:!c.done } : c);
+    await adminWrite("bardienst", "PATCH", b.id, { checklist });
+    await load();
   }
 
   async function handleDeleteBardienst(id) {
@@ -845,22 +1043,36 @@ export default function HHCEvents() {
 
   function openNewBardienst() {
     setEditingBardienst(null);
-    setBardienstForm({ shift_date:getNextThursday(), time_label:"", names:"", note:"" });
+    const f = { shift_date:getNextThursday(), time_label:"", names:"", note:"", checklistText:DEFAULT_CHECKLIST_ITEMS.join("\n"), team_id:"" };
+    setBardienstForm(f);
+    bardienstFormInitialRef.current = f;
     setShowBardienstForm(true);
   }
 
   function openEditBardienst(b) {
     setEditingBardienst(b);
-    setBardienstForm({ shift_date:b.shift_date?b.shift_date.slice(0,10):"", time_label:b.time_label||"", names:b.names||"", note:b.note||"" });
+    const checklistText = (b.checklist && b.checklist.length) ? b.checklist.map(c=>c.item).join("\n") : DEFAULT_CHECKLIST_ITEMS.join("\n");
+    const f = { shift_date:b.shift_date?b.shift_date.slice(0,10):"", time_label:b.time_label||"", names:b.names||"", note:b.note||"", checklistText, team_id:b.team_id||"" };
+    setBardienstForm(f);
+    bardienstFormInitialRef.current = f;
     setShowBardienstForm(true);
+  }
+
+  function closeBardienstForm() {
+    if (isDirty(bardienstForm, bardienstFormInitialRef.current) && !confirm("Je hebt niet-opgeslagen wijzigingen in dit formulier. Weet je zeker dat je wilt sluiten?")) return;
+    setShowBardienstForm(false);
   }
 
   async function handleSaveNews() {
     if (!newsForm.title || !newsForm.body) return;
     setSavingNews(true);
+    // Nieuw #51: afbeeldingengalerij -- image_urls is de bron, image_url blijft gevuld
+    // met de eerste foto voor plekken die nog het enkelvoudige veld gebruiken (lijst-thumbnail).
+    const cleanImages = (newsForm.images||[]).map(s=>s.trim()).filter(Boolean);
+    const payload = { title:newsForm.title, body:newsForm.body, pinned:newsForm.pinned, image_urls:cleanImages, image_url:cleanImages[0]||null };
     const res = editingNews
-      ? await adminWrite("mededelingen", "PATCH", editingNews.id, newsForm)
-      : await adminWrite("mededelingen", "POST", null, newsForm);
+      ? await adminWrite("mededelingen", "PATCH", editingNews.id, payload)
+      : await adminWrite("mededelingen", "POST", null, payload);
     setSavingNews(false);
     if (!res.ok) return;
     await load(); setShowNewsForm(false);
@@ -877,14 +1089,24 @@ export default function HHCEvents() {
 
   function openNewNews() {
     setEditingNews(null);
-    setNewsForm({ title:"", body:"", pinned:false });
+    const f = { title:"", body:"", pinned:false, images:[""] };
+    setNewsForm(f);
+    newsFormInitialRef.current = f;
     setShowNewsForm(true);
   }
 
   function openEditNews(n) {
     setEditingNews(n);
-    setNewsForm({ title:n.title, body:n.body, pinned:n.pinned||false });
+    const existing = (Array.isArray(n.image_urls) && n.image_urls.length) ? n.image_urls : (n.image_url ? [n.image_url] : [""]);
+    const f = { title:n.title, body:n.body, pinned:n.pinned||false, images:existing };
+    setNewsForm(f);
+    newsFormInitialRef.current = f;
     setShowNewsForm(true);
+  }
+
+  function closeNewsForm() {
+    if (isDirty(newsForm, newsFormInitialRef.current) && !confirm("Je hebt niet-opgeslagen wijzigingen in dit formulier. Weet je zeker dat je wilt sluiten?")) return;
+    setShowNewsForm(false);
   }
 
   async function submitIdea() {
@@ -904,16 +1126,41 @@ export default function HHCEvents() {
     else showToast(res.data?.error || "Kon idee niet verwijderen", "error");
   }
 
+  // Nieuw #3: snel een nieuwe reeks aanmaken vanuit het eventformulier zelf.
+  async function handleCreateSeries() {
+    const title = newSeriesTitle.trim();
+    if (!title) return;
+    const res = await adminWrite("event_series", "POST", null, { title });
+    if (!res.ok) return;
+    const created = res.data?.[0];
+    if (created) {
+      setEventSeries(s => [created, ...s]);
+      setForm(f => ({ ...f, series_id:created.id }));
+    }
+    setNewSeriesTitle("");
+  }
+
   function openNew() {
     setEditingEvent(null);
-    setForm({ title:"", description:"", location:"", start_time:"", end_time:"", category:"Evenement", is_public:true, hidden:false, sponsor_name:"", sponsor_logo:"", image_url:"", cost:"" });
+    const f = { title:"", description:"", location:"", start_time:"", end_time:"", category:"Evenement", is_public:true, hidden:false, sponsor_name:"", sponsor_logo:"", image_url:"", cost:"", series_id:"" };
+    setForm(f);
+    formInitialRef.current = f;
+    setRecurrence({ freq:"none", until:"", count:"" });
     setShowForm(true);
   }
 
   function openEdit(ev) {
     setEditingEvent(ev);
-    setForm({ title:ev.title, description:ev.description||"", location:ev.location||"", start_time:ev.start_time?ev.start_time.slice(0,16):"", end_time:ev.end_time?ev.end_time.slice(0,16):"", category:ev.category||"Evenement", is_public:ev.is_public!==false, hidden:ev.hidden||false, sponsor_name:ev.sponsor_name||"", sponsor_logo:ev.sponsor_logo||"", image_url:ev.image_url||"", cost:ev.cost!=null?String(ev.cost):"" });
+    const f = { title:ev.title, description:ev.description||"", location:ev.location||"", start_time:ev.start_time?ev.start_time.slice(0,16):"", end_time:ev.end_time?ev.end_time.slice(0,16):"", category:ev.category||"Evenement", is_public:ev.is_public!==false, hidden:ev.hidden||false, sponsor_name:ev.sponsor_name||"", sponsor_logo:ev.sponsor_logo||"", image_url:ev.image_url||"", cost:ev.cost!=null?String(ev.cost):"", series_id:ev.series_id||"" };
+    setForm(f);
+    formInitialRef.current = f;
     setShowForm(true);
+  }
+
+  // Verbetering #6/#21: bevestiging vragen bij het sluiten van het eventformulier met niet-opgeslagen wijzigingen.
+  function closeForm() {
+    if (isDirty(form, formInitialRef.current) && !confirm("Je hebt niet-opgeslagen wijzigingen in dit formulier. Weet je zeker dat je wilt sluiten?")) return;
+    setShowForm(false);
   }
 
   async function submitPin() {
@@ -956,6 +1203,36 @@ export default function HHCEvents() {
     } else if (res.status === 401) sessionExpired();
   }
 
+  // Nieuw #40: teams beheren
+  // Nieuw #184: pincode-vergeten-flow (minimale variant -- meldt supers, geen self-service reset)
+  async function submitForgotPin() {
+    const res = await adminApi({ action:"pinResets", op:"create", message:forgotPinMessage.trim() || null });
+    if (res.ok) setForgotPinSent(true);
+    else showToast("Kon verzoek niet versturen", "error");
+  }
+  async function resolvePinReset(id) {
+    const res = await adminApi({ action:"pinResets", op:"resolve", token:adminToken, id });
+    if (res.ok) { setPinResets(p => p.filter(x=>x.id!==id)); showToast("Verzoek afgehandeld"); }
+    else if (res.status === 401) sessionExpired();
+  }
+
+  async function handleAddTeam() {
+    const name = newTeamName.trim();
+    if (!name) return;
+    const res = await adminWrite("teams", "POST", null, { name, color:newTeamColor });
+    if (!res.ok) return;
+    setTeams(t => [...t, ...(res.data||[])]);
+    setNewTeamName("");
+    showToast("Team toegevoegd");
+  }
+  async function handleRemoveTeam(id) {
+    if (!confirm("Team verwijderen? Bardiensten die aan dit team gekoppeld zijn, blijven bestaan maar verliezen de teamkoppeling.")) return;
+    const res = await adminWrite("teams", "DELETE", id);
+    if (!res.ok) return;
+    setTeams(t => t.filter(x=>x.id!==id));
+    showToast("Team verwijderd");
+  }
+
   // Drag-and-drop
   function handleDragStart(id) { setDraggedId(id); }
   function handleDragOver(e, id) { e.preventDefault(); setDragOverId(id); }
@@ -996,7 +1273,14 @@ export default function HHCEvents() {
   const archivedEvents = events.filter(ev => ev.archived);
   const grouped = visibleEvents.reduce((acc,ev) => { const m=new Date(ev.start_time).toLocaleDateString("nl-NL",{month:"long",year:"numeric"}); if(!acc[m])acc[m]=[]; acc[m].push(ev); return acc; }, {});
   const calDays = getCalendarDays(calDate.year, calDate.month);
-  const calEvents = events.filter(ev => { const d=new Date(ev.start_time); return !ev.archived&&d.getFullYear()===calDate.year&&d.getMonth()===calDate.month&&(!ev.hidden||adminMode); });
+  // Nieuw #2: ook events meenemen die dit kalendermaand-venster overlappen, niet alleen die er exact in beginnen.
+  const calMonthStart = new Date(calDate.year, calDate.month, 1);
+  const calMonthEnd = new Date(calDate.year, calDate.month + 1, 0, 23, 59, 59, 999);
+  const calEvents = events.filter(ev => {
+    if (ev.archived || (ev.hidden && !adminMode)) return false;
+    const s = new Date(ev.start_time), e = ev.end_time ? new Date(ev.end_time) : s;
+    return e >= calMonthStart && s <= calMonthEnd;
+  });
   const statsMonths = Array.from({length:12},(_,i) => ({ month:MONTHS_NL[i].slice(0,3), count:events.filter(e=>{ const d=new Date(e.start_time); return d.getFullYear()===statsYear&&d.getMonth()===i; }).length }));
   const statsMax = Math.max(1, ...statsMonths.map(m=>m.count));
   const activeFilters = searchQuery || dateFrom || dateTo || locationFilter !== "Alles";
@@ -1031,12 +1315,14 @@ export default function HHCEvents() {
         .ev-card:hover{background:#fffdf8;transform:translateX(3px);box-shadow:-4px 0 20px ${primaryColor}22,0 1px 3px rgba(0,0,0,.06)}
         .ev-card.hidden-ev{opacity:.5;border-style:dashed}
         .ev-card.drag-over{border-top:2px solid ${primaryColor};transform:translateY(-2px)}
+        .ev-card.dragging{opacity:.45;transform:scale(.98);box-shadow:none;cursor:grabbing}
         .filter-btn{background:#fff;border:1.5px solid #e7e4da;color:#76756f;padding:7px 16px;border-radius:22px;cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
         .filter-btn.active{background:var(--fc,${primaryColor});border-color:var(--fc,${primaryColor});color:white}
         .filter-btn:hover:not(.active){border-color:var(--fc,${primaryColor});color:var(--fc,${primaryColor})}
         .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);animation:fadeIn .15s ease}
-        .modal{background:#ffffff;border:1px solid #e7e4da;border-radius:12px;padding:32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+        .modal{background:#ffffff;border:1px solid #e7e4da;border-radius:12px;padding:32px;width:100%;max-width:520px;max-height:90vh;max-height:90dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+        .modal-actions-sticky{position:sticky;bottom:-32px;margin:8px -32px -32px;padding:14px 32px;background:#ffffff;border-top:1px solid #ebe8df}
         .input{background:#ffffff;border:1px solid #e7e4da;color:#1d1f3a;padding:10px 14px;border-radius:6px;font-family:inherit;font-size:16px;width:100%;transition:border-color .2s;min-width:0}
         .input:focus{outline:none;border-color:${primaryColor}}
         .btn-red{background:${primaryColor};color:white;border:none;padding:12px 24px;border-radius:5px;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
@@ -1068,9 +1354,10 @@ export default function HHCEvents() {
         .print-title{display:none}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-        @media (max-width:600px){
+        @media (max-width:600px), (max-height:480px) and (pointer:coarse){
           .grid-2,.grid-3{grid-template-columns:1fr}
           .modal{padding:22px 18px}
+          .modal-actions-sticky{margin:8px -18px -22px;padding:12px 18px}
           .btn-ghost-onbrand,.btn-ghost,.btn-red{padding:9px 14px;font-size:13px}
           .btn-sm{padding:7px 12px;font-size:12px;min-height:32px}
           .ev-card{padding:14px 16px}
@@ -1263,7 +1550,7 @@ export default function HHCEvents() {
         <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap" }}>
           <div style={{ position:"relative", flex:1, minWidth:200 }}>
             <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#56554d", pointerEvents:"none" }}>🔍</span>
-            <input className="input" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:38, borderRadius:24 }} />
+            <input className="input" value={searchInput} onChange={e=>setSearchInput(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:38, borderRadius:24 }} />
           </div>
           <input className="input" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ width:150 }} title="Vanaf datum" />
           <input className="input" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ width:150 }} title="Tot datum" />
@@ -1271,7 +1558,7 @@ export default function HHCEvents() {
             <option>Alles</option>
             {allLocations.map(l=><option key={l}>{l}</option>)}
           </select>
-          {activeFilters && <button className="btn-sm" onClick={()=>{ setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); }}>✕ Reset</button>}
+          {activeFilters && <button className="btn-sm" onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); }}>✕ Reset</button>}
         </div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
           {["Alles",...allCategories].map(cat=>(
@@ -1293,14 +1580,33 @@ export default function HHCEvents() {
 
         {/* AGENDA */}
         {tab==="agenda" && (
-          loading
+          <>
+          {/* Nieuw #178: bulk-actiebalk zodra er events geselecteerd zijn */}
+          {canEdit && selectedEventIds.size>0 && (
+            <div className="no-print" style={{ position:"sticky", top:0, zIndex:5, display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", background:"#1d1f3a", color:"#fff", borderRadius:8, padding:"10px 16px", marginBottom:14 }}>
+              <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{selectedEventIds.size} geselecteerd</strong>
+              <button className="btn-sm" onClick={bulkArchive} disabled={bulkBusy}>Archiveer</button>
+              {canDelete && <button className="btn-sm" onClick={bulkDelete} disabled={bulkBusy} style={{ color:"#e63946" }}>Verwijder</button>}
+              <select className="input" defaultValue="" onChange={e=>{ bulkSetCategory(e.target.value); e.target.value=""; }} disabled={bulkBusy} style={{ width:"auto", fontSize:13 }}>
+                <option value="" disabled>Verplaats naar categorie…</option>
+                {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+              <button className="btn-sm" onClick={()=>setSelectedEventIds(new Set())} style={{ marginLeft:"auto" }}>✕ Selectie wissen</button>
+            </div>
+          )}
+          {loading
             ? <div style={{ display:"flex", flexDirection:"column", gap:10 }}>{[0,1,2].map(i=><SkeletonCard key={i} delay={i*0.07} />)}</div>
             : visibleEvents.length===0
               ? (
                 <div style={{ textAlign:"center", padding:60 }}>
                   <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
                   <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Geen evenementen gevonden</div>
-                  {activeFilters && <div style={{ color:"#76756f", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Pas de zoekfilters aan</div>}
+                  {activeFilters && (
+                    <>
+                      <div style={{ color:"#76756f", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Niets gevonden met de huidige filters</div>
+                      <button className="btn-sm" style={{ marginTop:14 }} onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); setFilter("Alles"); }}>✕ Filters wissen</button>
+                    </>
+                  )}
                   {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNew}>Eerste evenement toevoegen</button>}
                 </div>
               )
@@ -1318,7 +1624,7 @@ export default function HHCEvents() {
                       return (
                         <div
                           key={ev.id}
-                          className={`ev-card ${ev.hidden?"hidden-ev":""} ${dragOverId===ev.id?"drag-over":""}`}
+                          className={`ev-card ${ev.hidden?"hidden-ev":""} ${dragOverId===ev.id?"drag-over":""} ${draggedId===ev.id?"dragging":""}`}
                           style={{ "--cc":cc, opacity:past?.5:1, animationDelay:`${idx*0.05}s`, cursor:canEdit?"grab":"pointer" }}
                           onClick={()=>setSelectedEvent(ev)}
                           draggable={canEdit}
@@ -1333,6 +1639,9 @@ export default function HHCEvents() {
                             </div>
                           )}
                           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                            {canEdit && (
+                              <input type="checkbox" checked={selectedEventIds.has(ev.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleEventSelected(ev.id)} style={{ width:18, height:18, accentColor:primaryColor, flexShrink:0, cursor:"pointer" }} title="Selecteren voor bulkactie" />
+                            )}
                             <div style={{ background:cc, color:"#fff", borderRadius:8, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                               <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{new Date(ev.start_time).getDate()}</div>
                               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{new Date(ev.start_time).toLocaleDateString("nl-NL",{month:"short"})}</div>
@@ -1371,7 +1680,8 @@ export default function HHCEvents() {
                     })}
                   </div>
                 </div>
-              ))
+              ))}
+          </>
         )}
 
         {/* NIEUWS */}
@@ -1392,17 +1702,27 @@ export default function HHCEvents() {
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {news.map(n => (
-                  <div key={n.id} className="ev-card" style={{ cursor:"default", borderLeft:n.pinned?"4px solid #F18C21":"1px solid #ebe8df" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        {n.pinned && <span title="Vastgepind">📌</span>}
-                        <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", color:"#1d1f3a" }}>{n.title}</span>
+                  <div key={n.id} className="ev-card" onClick={()=>setSelectedNews(n)} style={{ borderLeft:n.pinned?"4px solid #F18C21":"1px solid #ebe8df" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                      {n.image_url ? (
+                        <div style={{ width:60, height:60, borderRadius:8, overflow:"hidden", flexShrink:0 }}>
+                          <img src={n.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{ e.target.onerror=null; e.target.parentElement.style.display="none"; }} />
+                        </div>
+                      ) : (
+                        <div style={{ width:60, height:60, borderRadius:8, background:n.pinned?"#F18C21":"#2E3192", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>📢</div>
+                      )}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
+                          {n.pinned && <span className="badge" style={{ background:"#F18C2122", color:"#F18C21" }}>📌 Vastgepind</span>}
+                          <span style={{ fontSize:12, color:"#b0afa9" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
+                        </div>
+                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", lineHeight:1.1, color:"#1d1f3a" }}>{n.title}</div>
+                        <div style={{ fontSize:13, color:"#76756f", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.body}</div>
                       </div>
-                      <span style={{ fontSize:12, color:"#b0afa9" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
+                      <span style={{ fontSize:22, color:"#c2bfb2", flexShrink:0 }}>›</span>
                     </div>
-                    <div style={{ fontSize:14, color:"#76756f", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{n.body}</div>
                     {canEdit && (
-                      <div style={{ marginTop:12, display:"flex", gap:6 }}>
+                      <div style={{ marginTop:12, display:"flex", gap:6 }} onClick={e=>e.stopPropagation()}>
                         <button className="btn-sm" onClick={()=>openEditNews(n)}>Bewerken</button>
                         {canDelete && <button className="btn-sm" onClick={()=>handleDeleteNews(n.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                       </div>
@@ -1432,6 +1752,8 @@ export default function HHCEvents() {
             const d = new Date(b.shift_date);
             const isToday = b.shift_date === todayStr0;
             const isPast = b.shift_date < todayStr0;
+            const team = b.team_id ? teams.find(t=>t.id===b.team_id) : null;
+            const checkedCount = (b.checklist||[]).filter(c=>c.done).length;
             return (
               <div key={b.id} className="ev-card" style={{ opacity:isPast?.5:1, cursor:"default" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:16 }}>
@@ -1446,14 +1768,40 @@ export default function HHCEvents() {
                     </div>
                     <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1, color:"#1d1f3a" }}>{formatDate(b.shift_date)}</div>
                     <div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:8 }}>
-                      {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
-                        <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:cc+"14", border:`1px solid ${cc}33`, borderRadius:20, padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#1d1f3a" }}>
-                          <span style={{ width:22, height:22, borderRadius:"50%", background:cc, color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
-                          {n}
+                      {/* Nieuw #40: team-badge i.p.v. losse namen wanneer een team gekoppeld is */}
+                      {team && (
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:team.color+"22", border:`1px solid ${team.color}55`, borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800, color:team.color, textTransform:"uppercase" }}>
+                          👕 {team.name}
                         </span>
-                      ))}
+                      )}
+                      {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i) => {
+                        const status = (b.attendance && b.attendance[n]) || "present";
+                        const noShow = status === "no_show";
+                        return (
+                          <span key={i} onClick={canEdit?()=>toggleAttendance(b,n):undefined}
+                            title={canEdit?(noShow?"Gemarkeerd als niet gekomen -- klik om te herstellen":"Klik om als 'niet gekomen' te markeren"):undefined}
+                            style={{ display:"inline-flex", alignItems:"center", gap:7, background:noShow?"#e6394611":cc+"14", border:`1px solid ${noShow?"#e6394655":cc+"33"}`, borderRadius:20, padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:noShow?"#e63946":"#1d1f3a", textDecoration:noShow?"line-through":"none", cursor:canEdit?"pointer":"default" }}>
+                            <span style={{ width:22, height:22, borderRadius:"50%", background:noShow?"#e63946":cc, color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{noShow?"✗":initials(n)}</span>
+                            {n}
+                          </span>
+                        );
+                      })}
                     </div>
                     {b.note && <div style={{ fontSize:14, color:"#76756f", marginTop:8, lineHeight:1.4 }}>📝 {b.note}</div>}
+                    {/* Nieuw #38: voorraad-checklist */}
+                    {(b.checklist||[]).length>0 && (
+                      <div style={{ marginTop:10, background:"#f7f6f2", borderRadius:6, padding:"8px 12px" }}>
+                        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:"#76756f", marginBottom:6 }}>Checklist ({checkedCount}/{b.checklist.length})</div>
+                        <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                          {b.checklist.map((c,i) => (
+                            <label key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontFamily:"Barlow,sans-serif", cursor:canEdit?"pointer":"default", color:c.done?"#76756f":"#1d1f3a", textDecoration:c.done?"line-through":"none" }}>
+                              <input type="checkbox" checked={!!c.done} disabled={!canEdit} onChange={()=>toggleChecklistItem(b,i)} style={{ accentColor:cc }} />
+                              {c.item}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {canEdit && (
@@ -1504,6 +1852,9 @@ export default function HHCEvents() {
                             <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:32, lineHeight:1, color:"#fff", textTransform:"uppercase" }}>{formatDate(nextShift.shift_date)}</div>
                             <div style={{ fontSize:15, color:"#ffe4c2", marginTop:8 }}>{nextShift.time_label || "Tijd volgt"}</div>
                             <div style={{ marginTop:12, display:"flex", flexWrap:"wrap", gap:8 }}>
+                              {nextShift.team_id && (() => { const t = teams.find(x=>x.id===nextShift.team_id); return t ? (
+                                <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800, color:"#fff", textTransform:"uppercase" }}>👕 {t.name}</span>
+                              ) : null; })()}
                               {nextShift.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
                                 <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:20, padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#fff" }}>
                                   <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:"#F18C21", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
@@ -1566,7 +1917,7 @@ export default function HHCEvents() {
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
                     {calDays.map((day,i) => {
                       if (!day) return <div key={`e${i}`} />;
-                      const dayEvs = calEvents.filter(ev => new Date(ev.start_time).getDate()===day.getDate());
+                      const dayEvs = calEvents.filter(ev => dayInRange(day, ev.start_time, ev.end_time));
                       const isToday = day.toDateString()===new Date().toDateString();
                       return (
                         <div key={day.toISOString()} className={`cal-day ${isToday?"today":""} ${dayEvs.length?"has-events":""}`}>
@@ -1605,7 +1956,12 @@ export default function HHCEvents() {
               <div style={{ flex:1, height:3, background:"#F18C21" }} />
             </div>
             {pastEvents.length===0
-              ? <div style={{ color:"#56554d", fontSize:14, fontFamily:"Barlow,sans-serif" }}>Nog geen verleden evenementen</div>
+              ? (
+                <div style={{ textAlign:"center", padding:60 }}>
+                  <div style={{ fontSize:48, marginBottom:16 }}>🗄</div>
+                  <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen verleden evenementen</div>
+                </div>
+              )
               : <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
                   {[...pastEvents].reverse().map(ev => {
                     const cc = categoryColors[ev.category]||primaryColor;
@@ -1640,6 +1996,25 @@ export default function HHCEvents() {
                       </div>
                       <button className="btn-sm" onClick={()=>handleArchive(ev)}>Herstellen</button>
                       {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Nieuw #179: prullenbak -- zachtverwijderde events, te herstellen of definitief te wissen */}
+            {canDelete && trashedEvents.length>0 && (
+              <div style={{ marginTop:36 }}>
+                <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#e63946", marginBottom:6 }}>🗑 Prullenbak ({trashedEvents.length})</div>
+                <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:14 }}>Verwijderde events -- herstel ze of wis ze definitief.</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {trashedEvents.map(ev => (
+                    <div key={ev.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"3px solid #e63946", borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:15, fontWeight:700, textTransform:"uppercase" }}>{ev.title}</div>
+                        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)} · verwijderd {formatDate(ev.deleted_at)}</div>
+                      </div>
+                      <button className="btn-sm" onClick={()=>handleRestoreDeleted(ev.id)}>Herstellen</button>
+                      <button className="btn-sm" onClick={()=>handlePermanentDelete(ev.id)} style={{ color:"#e63946" }}>Definitief verwijderen</button>
                     </div>
                   ))}
                 </div>
@@ -1712,7 +2087,7 @@ export default function HHCEvents() {
         {/* DASHBOARD (admin) */}
         {tab==="dashboard" && adminMode && (
           <AdminDashboard
-            events={events} attendees={attendees} bardienst={bardienst} news={news} ideas={ideas} pinsList={pinsList}
+            events={events} attendees={attendees} bardienst={bardienst} news={news} ideas={ideas} pinsList={pinsList} pinResets={pinResets}
             primaryColor={primaryColor} allCategories={allCategories} categoryColors={categoryColors}
             onSelectEvent={ev=>{ setSelectedEvent(ev); setTab("agenda"); }}
             onGoTab={setTab}
@@ -1758,6 +2133,17 @@ export default function HHCEvents() {
       {selectedEvent && (() => {
         const ev = selectedEvent;
         const cc = categoryColors[ev.category]||primaryColor;
+        // Nieuw #11: gerelateerde events -- zelfde reeks, anders zelfde categorie/locatie, anders eerstvolgende.
+        const related = (() => {
+          const pool = events.filter(e => e.id!==ev.id && !e.archived && !e.deleted_at && (!e.hidden||adminMode));
+          const bySeries = ev.series_id ? pool.filter(e => e.series_id===ev.series_id) : [];
+          const byCatOrLoc = pool.filter(e => e.category===ev.category || (ev.location && e.location===ev.location));
+          const upcoming = pool.filter(e => isUpcoming(e.start_time)).sort((a,b)=>new Date(a.start_time)-new Date(b.start_time));
+          const combined = [...bySeries, ...byCatOrLoc, ...upcoming];
+          const seen = new Set(); const out = [];
+          for (const e of combined) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } if (out.length>=3) break; }
+          return out;
+        })();
         return (
           <div className="modal-overlay" onClick={()=>setSelectedEvent(null)}>
             <div className="modal" style={{ maxWidth:540, padding:0, overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
@@ -1772,6 +2158,8 @@ export default function HHCEvents() {
                   <div>
                     <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
                     {ev.hidden && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6 }}>Verborgen</span>}
+                    {(ev.recurrence_rule || ev.recurrence_parent_id) && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6 }}>🔁 {ev.recurrence_rule?.freq==="monthly"?"Maandelijks":"Wekelijks"}</span>}
+                    {ev.series_id && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6 }}>🏆 {eventSeries.find(s=>s.id===ev.series_id)?.title||"Reeks"}</span>}
                     <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:34, lineHeight:.9, color:"#fff", textTransform:"uppercase", marginTop:10 }}>{ev.title}</div>
                   </div>
                   <button onClick={()=>setSelectedEvent(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", fontSize:18, flex:"none" }}>✕</button>
@@ -1779,14 +2167,16 @@ export default function HHCEvents() {
               </div>
               <div style={{ padding:"24px 28px 28px" }}>
               <div className="grid-2" style={{ marginBottom:16 }}>
-                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum</div>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatDate(ev.start_time)}</div>
+                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14, gridColumn:isMultiDay(ev)?"1 / -1":undefined }}>
+                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum{isMultiDay(ev)?" · meerdaags":""}</div>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatRange(ev.start_time, ev.end_time)}</div>
                 </div>
-                <div style={{ background:"#f7f6f2", borderRadius:6, padding:14 }}>
-                  <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
-                </div>
+                {!isMultiDay(ev) && (
+                  <div style={{ background:"#f7f6f2", borderRadius:6, padding:14 }}>
+                    <div style={{ fontSize:10, color:"#b0afa9", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"#1d1f3a" }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
+                  </div>
+                )}
               </div>
               {ev.location && (
                 <a href={`https://maps.google.com/?q=${encodeURIComponent(ev.location)}`} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"#f7f6f2", borderRadius:6, padding:14, marginBottom:16, textDecoration:"none" }}>
@@ -1836,6 +2226,23 @@ export default function HHCEvents() {
                   </>
                 )}
               </div>
+              {related.length>0 && (
+                <div style={{ marginTop:22, paddingTop:18, borderTop:"1px solid #ebe8df" }}>
+                  <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#b0afa9", marginBottom:10 }}>Ook interessant</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {related.map(r => {
+                      const rc = categoryColors[r.category]||primaryColor;
+                      return (
+                        <div key={r.id} onClick={()=>setSelectedEvent(r)} style={{ display:"flex", alignItems:"center", gap:10, background:"#f7f6f2", borderRadius:6, padding:"9px 12px", cursor:"pointer" }}>
+                          <span style={{ width:8, height:8, borderRadius:"50%", background:rc, flexShrink:0 }} />
+                          <span style={{ flex:1, fontSize:13, fontWeight:700, color:"#1d1f3a" }}>{r.title}</span>
+                          <span style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{formatDate(r.start_time)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               </div>
             </div>
           </div>
@@ -1847,8 +2254,8 @@ export default function HHCEvents() {
 
       {/* FORM MODAL */}
       {showForm && (
-        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
-          <div className="modal" style={{ maxWidth:640 }} onClick={e=>e.stopPropagation()}>
+        <div className="modal-overlay" onClick={closeForm}>
+          <div className="modal" style={{ maxWidth:640 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingEvent?"Bewerken":"Nieuw evenement"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
@@ -1865,6 +2272,42 @@ export default function HHCEvents() {
                 <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Locatie</label><input className="input" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="Sportpark De Brug" /></div>
               </div>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Beschrijving</label><textarea className="input" rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Extra info..." style={{ resize:"vertical" }} /></div>
+
+              {/* Nieuw #3: eventreeksen/toernooien */}
+              <div>
+                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Onderdeel van reeks</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  <select className="input" value={form.series_id} onChange={e=>setForm(f=>({...f,series_id:e.target.value}))} style={{ flex:1 }}>
+                    <option value="">Geen reeks</option>
+                    {eventSeries.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+                  </select>
+                </div>
+                <div style={{ display:"flex", gap:8, marginTop:6 }}>
+                  <input className="input" value={newSeriesTitle} onChange={e=>setNewSeriesTitle(e.target.value)} placeholder="Nieuwe reeks (bv. Zomertoernooi 2026)" style={{ flex:1, fontSize:13 }} />
+                  <button type="button" className="btn-sm" onClick={handleCreateSeries} disabled={!newSeriesTitle.trim()}>+ Aanmaken</button>
+                </div>
+              </div>
+
+              {/* Nieuw #1: terugkerende events -- alleen bij het aanmaken van een nieuw event */}
+              {!editingEvent && (
+                <div>
+                  <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Herhaling</label>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    <select className="input" value={recurrence.freq} onChange={e=>setRecurrence(r=>({...r,freq:e.target.value}))} style={{ width:"auto" }}>
+                      <option value="none">Nooit (eenmalig)</option>
+                      <option value="weekly">Wekelijks</option>
+                      <option value="monthly">Maandelijks</option>
+                    </select>
+                    {recurrence.freq!=="none" && (
+                      <>
+                        <input className="input" type="date" value={recurrence.until} onChange={e=>setRecurrence(r=>({...r,until:e.target.value}))} style={{ width:150 }} title="Tot en met datum" placeholder="Tot en met" />
+                        <input className="input" type="number" min="1" max="104" value={recurrence.count} onChange={e=>setRecurrence(r=>({...r,count:e.target.value}))} style={{ width:110 }} placeholder="Max. aantal" title="Maximum aantal keer (standaard 52)" />
+                      </>
+                    )}
+                  </div>
+                  {recurrence.freq!=="none" && <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>Maakt losse events aan tot de einddatum of het maximum, wat eerder komt.</div>}
+                </div>
+              )}
               <div>
                 <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
                 <input className="input" value={form.image_url} onChange={e=>setForm(f=>({...f,image_url:e.target.value}))} placeholder="https://... (banner/foto)" />
@@ -1879,9 +2322,9 @@ export default function HHCEvents() {
                 <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.is_public} onChange={e=>setForm(f=>({...f,is_public:e.target.checked}))} style={{ accentColor:primaryColor }} /> Publiek</label>
                 <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.hidden} onChange={e=>setForm(f=>({...f,hidden:e.target.checked}))} style={{ accentColor:"#76756f" }} /> Verborgen</label>
               </div>
-              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+              <div className="modal-actions-sticky" style={{ display:"flex", gap:10 }}>
                 <button className="btn-red" onClick={handleSave} disabled={saving||!form.title||!form.start_time} style={{ flex:1 }}>{saving?"Opslaan...":editingEvent?"Opslaan":"Toevoegen"}</button>
-                <button className="btn-ghost" onClick={()=>setShowForm(false)}>Annuleren</button>
+                <button className="btn-ghost" onClick={closeForm}>Annuleren</button>
               </div>
             </div>
           </div>
@@ -1890,35 +2333,107 @@ export default function HHCEvents() {
 
       {/* BARDIENST FORM MODAL */}
       {showBardienstForm && (
-        <div className="modal-overlay" onClick={()=>setShowBardienstForm(false)}>
-          <div className="modal" style={{ maxWidth:480 }} onClick={e=>e.stopPropagation()}>
+        <div className="modal-overlay" onClick={closeBardienstForm}>
+          <div className="modal" style={{ maxWidth:480 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingBardienst?"Bardienst bewerken":"Bardienst toevoegen"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Datum *</label><input className="input" type="date" value={bardienstForm.shift_date} onChange={e=>setBardienstForm(f=>({...f,shift_date:e.target.value}))} /></div>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tijd (optioneel)</label><input className="input" value={bardienstForm.time_label} onChange={e=>setBardienstForm(f=>({...f,time_label:e.target.value}))} placeholder="bv. 20:00 – 01:00" /></div>
-              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Namen * (komma-gescheiden)</label><input className="input" value={bardienstForm.names} onChange={e=>setBardienstForm(f=>({...f,names:e.target.value}))} placeholder="Jan, Piet, Marie" /></div>
+              {/* Nieuw #40: bardienst per team i.p.v. losse namen */}
+              <div>
+                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Team (optioneel)</label>
+                <select className="input" value={bardienstForm.team_id} onChange={e=>setBardienstForm(f=>({...f,team_id:e.target.value}))}>
+                  <option value="">Geen team -- losse namen hieronder</option>
+                  {teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Namen {bardienstForm.team_id?"(optioneel, extra bij het team)":"* (komma-gescheiden)"}</label><input className="input" value={bardienstForm.names} onChange={e=>setBardienstForm(f=>({...f,names:e.target.value}))} placeholder="Jan, Piet, Marie" /></div>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Notitie</label><input className="input" value={bardienstForm.note} onChange={e=>setBardienstForm(f=>({...f,note:e.target.value}))} placeholder="Extra info" /></div>
-              <div style={{ display:"flex", gap:10, marginTop:8 }}>
-                <button className="btn-red" onClick={handleSaveBardienst} disabled={savingBardienst||!bardienstForm.shift_date||!bardienstForm.names} style={{ flex:1 }}>{savingBardienst?"Opslaan...":editingBardienst?"Opslaan":"Toevoegen"}</button>
-                <button className="btn-ghost" onClick={()=>setShowBardienstForm(false)}>Annuleren</button>
+              {/* Nieuw #38: voorraad-checklist */}
+              <div>
+                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Checklist (één item per regel)</label>
+                <textarea className="input" rows={4} value={bardienstForm.checklistText} onChange={e=>setBardienstForm(f=>({...f,checklistText:e.target.value}))} style={{ resize:"vertical" }} />
+              </div>
+              <div className="modal-actions-sticky" style={{ display:"flex", gap:10 }}>
+                <button className="btn-red" onClick={handleSaveBardienst} disabled={savingBardienst||!bardienstForm.shift_date||(!bardienstForm.names&&!bardienstForm.team_id)} style={{ flex:1 }}>{savingBardienst?"Opslaan...":editingBardienst?"Opslaan":"Toevoegen"}</button>
+                <button className="btn-ghost" onClick={closeBardienstForm}>Annuleren</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* NIEUWS DETAIL MODAL */}
+      {selectedNews && (() => {
+        const n = selectedNews;
+        const cc = n.pinned ? "#F18C21" : "#2E3192";
+        return (
+          <div className="modal-overlay" onClick={()=>setSelectedNews(null)}>
+            <div className="modal" style={{ maxWidth:540, padding:0, overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
+              <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
+                <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
+                <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
+                  <div>
+                    {n.pinned && <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>📌 Vastgepind</span>}
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:30, lineHeight:1, color:"#fff", textTransform:"uppercase", marginTop:n.pinned?10:0 }}>{n.title}</div>
+                  </div>
+                  <button onClick={()=>setSelectedNews(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", fontSize:18, flex:"none" }}>✕</button>
+                </div>
+              </div>
+              <div style={{ padding:"24px 28px 28px" }}>
+                <div style={{ fontSize:12, color:"#b0afa9", marginBottom:16 }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</div>
+                {/* Nieuw #51: afbeeldingengalerij -- CSS scroll-snap i.p.v. eigen carrousel-state (dit is een IIFE, geen component, dus geen hooks) */}
+                {(() => {
+                  const imgs = (Array.isArray(n.image_urls) && n.image_urls.length) ? n.image_urls : (n.image_url ? [n.image_url] : []);
+                  if (!imgs.length) return null;
+                  return (
+                    <div style={{ marginBottom:18 }}>
+                      <div style={{ display:"flex", gap:8, overflowX:"auto", scrollSnapType:"x mandatory", borderRadius:8 }}>
+                        {imgs.map((url,i) => (
+                          <img key={i} src={url} alt={`${n.title} ${i+1}`} style={{ width:"100%", flex:"0 0 100%", maxHeight:280, objectFit:"cover", borderRadius:8, scrollSnapAlign:"start", display:"block" }} onError={e=>{ e.target.style.display="none"; }} />
+                        ))}
+                      </div>
+                      {imgs.length>1 && <div style={{ fontSize:11, color:"#b0afa9", marginTop:6, textAlign:"center", fontFamily:"Barlow,sans-serif" }}>{imgs.length} foto's — swipe om te bladeren</div>}
+                    </div>
+                  );
+                })()}
+                <div style={{ fontSize:15, color:"#1d1f3a", lineHeight:1.6, whiteSpace:"pre-wrap" }}>{n.body}</div>
+                <div style={{ marginTop:22, display:"flex", gap:8, flexWrap:"wrap" }}>
+                  <button className="btn-ghost" onClick={()=>setSelectedNews(null)}>Sluiten</button>
+                  {canEdit && <button className="btn-sm" onClick={()=>{ setSelectedNews(null); openEditNews(n); }}>Bewerken</button>}
+                  {canDelete && <button className="btn-sm" onClick={()=>{ setSelectedNews(null); handleDeleteNews(n.id); }} style={{ color:"#e63946" }}>Verwijderen</button>}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* NIEUWS FORM MODAL */}
       {showNewsForm && (
-        <div className="modal-overlay" onClick={()=>setShowNewsForm(false)}>
-          <div className="modal" style={{ maxWidth:520 }} onClick={e=>e.stopPropagation()}>
+        <div className="modal-overlay" onClick={closeNewsForm}>
+          <div className="modal" style={{ maxWidth:520 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingNews?"Mededeling bewerken":"Mededeling plaatsen"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={newsForm.title} onChange={e=>setNewsForm(f=>({...f,title:e.target.value}))} placeholder="Titel van de mededeling" /></div>
               <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Tekst *</label><textarea className="input" rows={5} value={newsForm.body} onChange={e=>setNewsForm(f=>({...f,body:e.target.value}))} placeholder="Waar gaat het over..." style={{ resize:"vertical" }} /></div>
+              <div>
+                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeeldingen {newsForm.images.filter(Boolean).length>1?`(${newsForm.images.filter(Boolean).length})`:""}</label>
+                {newsForm.images.map((url, i) => (
+                  <div key={i} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:8 }}>
+                    <div style={{ flex:1 }}>
+                      <input className="input" value={url} onChange={e=>setNewsForm(f=>({...f,images:f.images.map((u,ui)=>ui===i?e.target.value:u)}))} placeholder="https://... (foto bij het bericht)" />
+                      {url && <img src={url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:6, border:"1px solid #e7e4da", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
+                    </div>
+                    {newsForm.images.length>1 && <button type="button" className="btn-sm" onClick={()=>setNewsForm(f=>({...f,images:f.images.filter((_,ui)=>ui!==i)}))} style={{ color:"#e63946" }}>✕</button>}
+                  </div>
+                ))}
+                <button type="button" className="btn-sm" onClick={()=>setNewsForm(f=>({...f,images:[...f.images,""]}))}>+ Nog een foto</button>
+              </div>
               <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={newsForm.pinned} onChange={e=>setNewsForm(f=>({...f,pinned:e.target.checked}))} style={{ accentColor:primaryColor }} /> Vastpinnen bovenaan de agenda</label>
-              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+              <div className="modal-actions-sticky" style={{ display:"flex", gap:10 }}>
                 <button className="btn-red" onClick={handleSaveNews} disabled={savingNews||!newsForm.title||!newsForm.body} style={{ flex:1 }}>{savingNews?"Opslaan...":editingNews?"Opslaan":"Plaatsen"}</button>
-                <button className="btn-ghost" onClick={()=>setShowNewsForm(false)}>Annuleren</button>
+                <button className="btn-ghost" onClick={closeNewsForm}>Annuleren</button>
               </div>
             </div>
           </div>
@@ -1945,16 +2460,38 @@ export default function HHCEvents() {
 
       {/* PIN MODAL */}
       {showPinModal && (
-        <div className="modal-overlay" onClick={()=>setShowPinModal(false)}>
-          <div className="modal" style={{ maxWidth:380 }} onClick={e=>e.stopPropagation()}>
-            <h2 style={{ fontSize:22, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>Beheer</h2>
-            <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Voer je pincode in</p>
-            <input className="input" type="password" placeholder="Pincode" value={pinInput} onChange={e=>{ setPinInput(e.target.value); setPinError(false); }} onKeyDown={e=>e.key==="Enter"&&submitPin()} style={{ fontSize:24, letterSpacing:8, textAlign:"center", marginBottom:pinError?8:16 }} autoFocus />
-            {pinError && <p style={{ color:"#e63946", fontSize:13, textAlign:"center", marginBottom:16, fontFamily:"Barlow,sans-serif" }}>Verkeerde pincode</p>}
-            <div style={{ display:"flex", gap:10 }}>
-              <button className="btn-red" onClick={submitPin} style={{ flex:1 }}>Inloggen</button>
-              <button className="btn-ghost" onClick={()=>setShowPinModal(false)}>Annuleren</button>
-            </div>
+        <div className="modal-overlay" onClick={()=>{ setShowPinModal(false); setShowForgotPin(false); setForgotPinSent(false); }}>
+          <div className="modal" style={{ maxWidth:380 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
+            {!showForgotPin ? (
+              <>
+                <h2 style={{ fontSize:22, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>Beheer</h2>
+                <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Voer je pincode in</p>
+                <input className="input" type="password" placeholder="Pincode" value={pinInput} onChange={e=>{ setPinInput(e.target.value); setPinError(false); }} onKeyDown={e=>e.key==="Enter"&&submitPin()} style={{ fontSize:24, letterSpacing:8, textAlign:"center", marginBottom:pinError?8:16 }} autoFocus />
+                {pinError && <p style={{ color:"#e63946", fontSize:13, textAlign:"center", marginBottom:16, fontFamily:"Barlow,sans-serif" }}>Verkeerde pincode</p>}
+                <div style={{ display:"flex", gap:10 }}>
+                  <button className="btn-red" onClick={submitPin} style={{ flex:1 }}>Inloggen</button>
+                  <button className="btn-ghost" onClick={()=>setShowPinModal(false)}>Annuleren</button>
+                </div>
+                {/* Nieuw #184: pincode-vergeten-flow */}
+                <button className="btn-ghost" style={{ width:"100%", marginTop:10, border:"none" }} onClick={()=>{ setShowForgotPin(true); setForgotPinSent(false); setForgotPinMessage(""); }}>Pincode kwijt?</button>
+              </>
+            ) : forgotPinSent ? (
+              <>
+                <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:10 }}>Verzoek verstuurd</h2>
+                <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Een beheerder met de rol "Beheerder" ziet je verzoek in de instellingen en kan je een nieuwe pincode geven.</p>
+                <button className="btn-ghost" style={{ width:"100%" }} onClick={()=>{ setShowPinModal(false); setShowForgotPin(false); }}>Sluiten</button>
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>Pincode kwijt</h2>
+                <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Er is geen automatische reset -- je verzoek wordt gemeld bij een beheerder, die je persoonlijk een nieuwe pincode geeft.</p>
+                <textarea className="input" rows={3} value={forgotPinMessage} onChange={e=>setForgotPinMessage(e.target.value)} placeholder="Wie ben je en welke rol had je? (optioneel, maar handig)" style={{ resize:"vertical", marginBottom:16 }} />
+                <div style={{ display:"flex", gap:10 }}>
+                  <button className="btn-red" onClick={submitForgotPin} style={{ flex:1 }}>Verstuur verzoek</button>
+                  <button className="btn-ghost" onClick={()=>setShowForgotPin(false)}>Terug</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1962,7 +2499,7 @@ export default function HHCEvents() {
       {/* SETTINGS MODAL */}
       {showSettings && (
         <div className="modal-overlay" onClick={()=>setShowSettings(false)}>
-          <div className="modal" style={{ maxWidth:620 }} onClick={e=>e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth:620 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
             <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>⚙ Beheerinstellingen</h2>
 
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Clubinstellingen</div>
@@ -1984,17 +2521,69 @@ export default function HHCEvents() {
 
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Categorie kleuren</div>
             <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
-              {allCategories.map(cat => (
-                <div key={cat} className="settings-row">
-                  <span style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>{cat}</span>
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <input className="input" value={categoryColors[cat]||"#76756f"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:100, fontSize:13 }} />
-                    <input type="color" value={categoryColors[cat]||"#76756f"} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:36, height:36, border:"1px solid #e7e4da", borderRadius:6, padding:2, background:"#f3f1ea", cursor:"pointer" }} />
+              {allCategories.map(cat => {
+                const cv = categoryColors[cat] || "#76756f";
+                const lowContrast = contrastWithWhite(cv) < 4.5; // verbetering #23
+                return (
+                  <div key={cat}>
+                    <div className="settings-row" style={{ borderBottom:lowContrast?"none":undefined }}>
+                      <span style={{ fontSize:14, fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:8 }}>
+                        {cat}
+                        <span style={{ background:cv, color:"#fff", fontSize:10, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 9px", borderRadius:20 }}>Voorbeeld</span>
+                      </span>
+                      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                        <input className="input" value={cv} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:100, fontSize:13 }} />
+                        <input type="color" value={cv} onChange={e=>setCategoryColors(c=>({...c,[cat]:e.target.value}))} style={{ width:36, height:36, border:"1px solid #e7e4da", borderRadius:6, padding:2, background:"#f3f1ea", cursor:"pointer" }} />
+                      </div>
+                    </div>
+                    {lowContrast && (
+                      <div style={{ fontSize:12, color:"#e63946", fontFamily:"Barlow,sans-serif", padding:"0 0 12px", borderBottom:"1px solid #ebe8df" }}>
+                        ⚠ Deze kleur is te licht — witte tekst erop (badges, kalender) is lastig leesbaar. Kies een donkerdere tint.
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <button className="btn-sm" onClick={()=>setCategoryColors(DEFAULT_COLORS)} style={{ alignSelf:"flex-start", marginTop:4 }}>Reset kleuren</button>
             </div>
+
+            {/* Nieuw #40: teams (voor bardienst per team) */}
+            <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Teams</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
+              {teams.map(t => (
+                <div key={t.id} className="settings-row">
+                  <span style={{ fontSize:14, fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={{ width:12, height:12, borderRadius:3, background:t.color, display:"inline-block" }} />
+                    {t.name}
+                  </span>
+                  <button className="btn-sm" onClick={()=>handleRemoveTeam(t.id)} style={{ color:"#e63946" }}>Verwijderen</button>
+                </div>
+              ))}
+              {teams.length===0 && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Nog geen teams -- voeg er hieronder één toe.</div>}
+              <div style={{ display:"flex", gap:8, marginTop:6 }}>
+                <input className="input" value={newTeamName} onChange={e=>setNewTeamName(e.target.value)} placeholder="Teamnaam (bv. JO17-1)" style={{ flex:1 }} />
+                <input type="color" value={newTeamColor} onChange={e=>setNewTeamColor(e.target.value)} style={{ width:36, height:36, border:"1px solid #e7e4da", borderRadius:6, padding:2, background:"#f3f1ea", cursor:"pointer" }} />
+                <button className="btn-sm" onClick={handleAddTeam} disabled={!newTeamName.trim()}>Toevoegen</button>
+              </div>
+            </div>
+
+            {/* Nieuw #184: openstaande "pincode kwijt"-verzoeken */}
+            {pinResets.length>0 && (
+              <>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#e63946", marginBottom:12 }}>🔑 Pincode-verzoeken ({pinResets.length})</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
+                  {pinResets.map(r => (
+                    <div key={r.id} style={{ background:"#fff7f2", border:"1px solid #e6394633", borderRadius:6, padding:"10px 14px", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                      <div style={{ flex:1, minWidth:160 }}>
+                        <div style={{ fontSize:13, fontFamily:"Barlow,sans-serif" }}>{r.message || "(geen bericht toegevoegd)"}</div>
+                        <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{new Date(r.created_at).toLocaleString("nl-NL")}</div>
+                      </div>
+                      <button className="btn-sm" onClick={()=>resolvePinReset(r.id)}>Afgehandeld</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:12 }}>Beheerders pincodes</div>
             <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:10 }}>Pincodes worden gehasht opgeslagen en server-side gecontroleerd — daarom is de code zelf hier niet meer zichtbaar.</div>
