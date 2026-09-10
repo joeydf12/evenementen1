@@ -2158,23 +2158,25 @@ export default function HHCEvents() {
         {/* IDEEËNBUS (admin) */}
         {tab==="ideeen" && adminMode && (
           <div>
-            <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:primaryColor, marginBottom:8 }}>Ideeënbus ({ideas.length})</div>
-            <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Alleen beheerders zien deze ideeën — ze zijn niet zichtbaar voor bezoekers.</div>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{ideas.length} idee{ideas.length!==1?"ën":""} — alleen zichtbaar voor beheerders</span>
+              <button className="btn-red" onClick={()=>setShowIdeaForm(true)}>+ Nieuw idee</button>
+            </div>
             {ideas.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
-                <div style={{ fontSize:48, marginBottom:16 }}>💡</div>
-                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen ideeën binnengekomen</div>
+                <Lightbulb size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen ideeën binnengekomen</div>
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {ideas.map(idea => (
-                  <div key={idea.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px" }}>
+                  <div key={idea.id} className="ev-card" style={{ cursor:"default", borderLeft:`4px solid var(--color-primary)` }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
                       <div>
-                        <div style={{ fontSize:13, fontWeight:700, color:primaryColor }}>{idea.name || "Anoniem"}</div>
-                        <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{new Date(idea.created_at).toLocaleString("nl-NL")}</div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"var(--color-primary)" }}>{idea.name || "Anoniem"}</div>
+                        <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{new Date(idea.created_at).toLocaleString("nl-NL")}</div>
                       </div>
-                      {canEdit && <button className="btn-sm" onClick={()=>handleRemoveIdea(idea.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
+                      {canEdit && <button className="btn-sm" onClick={()=>handleRemoveIdea(idea.id)} style={{ color:"var(--color-danger)" }}>Verwijderen</button>}
                     </div>
                     <div style={{ fontSize:15, fontFamily:"Barlow,sans-serif", marginTop:8, lineHeight:1.5, whiteSpace:"pre-wrap" }}>{idea.message}</div>
                   </div>
@@ -2502,10 +2504,11 @@ export default function HHCEvents() {
 
       {/* IDEE FORM MODAL */}
       {showIdeaForm && (
-        <div className="modal-overlay" onClick={()=>setShowIdeaForm(false)}>
-          <div className="modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
-            <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>💡 Ideeën voor spelerscommissie</h2>
-            <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Alleen het bestuur ziet dit — jouw naam is optioneel.</p>
+        <div className="modal-overlay sheet-mode" onClick={()=>setShowIdeaForm(false)}>
+          <div className="modal sheet-mode" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
+            <div className="modal-drag-handle" />
+            <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:6, display:"flex", alignItems:"center", gap:8, color:"var(--color-text)" }}><Lightbulb size={20} strokeWidth={1.8} style={{ color:"var(--color-accent)" }} /> Ideeën voor spelerscommissie</h2>
+            <p style={{ color:"var(--color-text-secondary)", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Alleen het bestuur ziet dit — jouw naam is optioneel.</p>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               <input className="input" value={ideaName} onChange={e=>setIdeaName(e.target.value)} placeholder="Jouw naam (optioneel)" />
               <textarea className="input" rows={4} value={ideaMessage} onChange={e=>setIdeaMessage(e.target.value)} placeholder="Wat is je idee voor de spelerscommissie?" style={{ resize:"vertical" }} />
