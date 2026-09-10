@@ -1,6 +1,6 @@
-# HHC'09 Clubagenda — Design System V1
+# HHC'09 Clubagenda — Design System V2
 
-Status: **draft, ter beoordeling — nog niets gebouwd op basis hiervan.**
+Status: **goedgekeurd — open vragen uit V1 zijn beantwoord. Klaar voor Fase 2 (componenten), nog geen losse pagina's.**
 Referentiebeelden: [`hhc09-nieuw-design-mockup.png`](./hhc09-nieuw-design-mockup.png) (stijlreferentie, niet content).
 
 ---
@@ -56,8 +56,8 @@ Fonts (al aanwezig in de app): **Saira Condensed** (koppen) + **Barlow** (body).
 | Badge / filter-chip | 999px (pill) |
 | Modal (desktop) | 20px |
 | Bottom sheet (mobiel modal) | 20px 20px 0 0 |
-| Bottom navigation (floating) | 18px |
-| Knop | **zie open vraag 1 hieronder** |
+| Bottom navigation | 0 (vol-breedte, zie §11) |
+| Knop (alle varianten) | 999px (pil) |
 
 ## 5. Shadows
 
@@ -71,8 +71,7 @@ Geen zware zwarte schaduwen. Hover = shadow iets groter + `translateY(-2px)`.
 
 ## 6. Iconen
 
-Voorstel: overstappen op **Lucide** (`lucide-react`, nieuwe dependency) i.p.v. de huidige handgetekende SVG's, voor consistente, dunne outline-stijl. Stroke 1.75–2px, standaardmaat 20–22px. Actieve/geselecteerde staat mag gevuld (`fill`) zijn waar functioneel logisch (bv. actief tabblad-icoon).
-**Zie open vraag 3.**
+**Beslist:** overstappen op **Lucide** (`lucide-react`, nieuwe dependency) i.p.v. de huidige handgetekende SVG's, voor consistente, dunne outline-stijl. Stroke 1.75–2px, standaardmaat 20–22px. Actieve/geselecteerde staat mag gevuld (`fill`) zijn waar functioneel logisch (bv. actief tabblad-icoon). Wordt toegevoegd in Fase 2.
 
 ## 7. Buttons
 
@@ -84,7 +83,7 @@ Voorstel: overstappen op **Lucide** (`lucide-react`, nieuwe dependency) i.p.v. d
 | Danger | wit | `color-danger` | 1px `color-danger`33 | verwijderen (rij-actie) |
 | Danger solid | `color-danger` | wit | — | bevestigen van verwijderen in modal |
 
-Hoogte 44–48px, font Barlow 600 15px. Radius: zie open vraag 1.
+Hoogte 44–48px, font Barlow 600 15px. **Radius: 999px (pil), voor alle varianten** — gekozen conform de mockup-afbeelding. Dit maakt de knoppenstijl consistent met de filter-chips en badges, die al pil-vormig waren.
 
 ## 8. Inputs
 
@@ -102,15 +101,15 @@ Pill (999px), padding 3px 10px, 11px/700 uppercase, achtergrond = kleur op 14–
 
 ## 11. Navigatie
 
-**Mobiel (< 600px):** floating bottom nav — `margin:12px` (safe-area-aware onderin), radius 18px, witte achtergrond, `--shadow-nav`. Max. 5 items: **Home · Agenda · Nieuws · Bardienst · Meer**. "Meer" ontsluit Kalender, Archief, Idee en (indien admin) Statistieken/Dashboard/Ideeënbus/Instellingen. Actief item: icoon + label in `color-accent`, met een zachte ronde chip erachter (`color-accent` op 10–14% dekking, radius 12px) zodat het niet alleen van kleur afhangt.
-**Zie open vraag 2** (dit wijkt af van de vorige losse implementatie en van de mockup-afbeelding, die een niet-zwevende volledige-breedte balk toont).
+**Mobiel (< 600px):** **beslist: vol-breedte bottom nav** (conform mockup) — witte achtergrond, dunne bovenrand, geen marge/zwevende kaart. Max. 5 items: **Home · Agenda · Nieuws · Bardienst · Meer**. "Meer" ontsluit Kalender, Archief, Idee en (indien admin) Statistieken/Dashboard/Ideeënbus/Instellingen. Actief item: icoon + label in `color-accent`, met een zachte ronde chip erachter (`color-accent` op 10–14% dekking, radius 12px) zodat het niet alleen van kleur afhangt. (De vol-breedte balk is al zo gebouwd in de vorige stap — dat blijft dus staan.)
 
 **Desktop (≥ 768px):** pill-tabs in de header — inactief transparant met grijze rand/tekst, actief blauwe achtergrond met witte tekst. (Dit is al zo geïmplementeerd in de vorige stap.)
 
 ## 12. Modal
 
-**Desktop:** gecentreerd, max-width 760px, radius 20px, overlay `rgba(15,23,42,.45)` + lichte blur.
-**Mobiel:** bottom sheet, radius 20px 20px 0 0, met sleepbalkje bovenin, slide-up animatie. Dit is een structurele wijziging t.o.v. de huidige (overal gecentreerde) modal — pas ik toe vanaf Fase 4 (Event detail), tenzij je liever overal de huidige gecentreerde modal aanhoudt.
+**Desktop:** gecentreerd, max-width 760px, radius 20px, overlay `rgba(15,23,42,.45)` + lichte blur. Geldt voor alle modals (event detail, formulieren, instellingen).
+**Mobiel — Event detail specifiek:** **beslist: bottom sheet**, radius 20px 20px 0 0, met sleepbalkje bovenin, slide-up animatie. Gebouwd als herbruikbaar `BottomSheet`-component in Fase 2, toegepast op Event detail in Fase 4.
+**Mobiel — overige modals** (formulieren, instellingen, bevestigingen): blijven voorlopig de huidige gecentreerde modal-stijl, alleen geherstyled met de nieuwe tokens (radius/shadow/kleuren). Als dat ook bottom sheets moeten worden, geef je dat apart aan — dat is nu niet gevraagd.
 
 ## 13. Mobiele layout
 
@@ -120,7 +119,7 @@ Pill (999px), padding 3px 10px, 11px/700 uppercase, achtergrond = kleur op 14–
 ├─────────────────────────────┤
 │         PAGINA-INHOUD        │
 ├─────────────────────────────┤
-│  🏠     📅    📰    🍺   ⋯  │   ← floating bottom nav
+│  🏠     📅    📰    🍺   ⋯  │   ← vol-breedte bottom nav
 │ Home  Agenda Nieuws Bar  Meer│
 └─────────────────────────────┘
 ```
@@ -154,11 +153,26 @@ Pill (999px), padding 3px 10px, 11px/700 uppercase, achtergrond = kleur op 14–
 
 ---
 
-## Open vragen (bewust niet zelf ingevuld)
+## Beslissingen V1 → V2
 
-1. **Vorm van de primary-knop** ("Ik kom!" e.d.): jouw geschreven spec zegt knoppen 10–12px radius, pills alleen voor badges/filters — maar de mockup-afbeelding toont een duidelijk pil-vormige "Ik kom!"-knop. Welke richting?
-2. **Bottom navigation**: jouw geschreven spec vraagt een zwevende balk (marge, radius, schaduw) — de mockup-afbeelding toont een balk die vol-breedte tegen de onderkant staat. Welke van de twee?
-3. **Iconen overstappen naar Lucide** (nieuwe npm-dependency `lucide-react`) i.p.v. de huidige handgemaakte SVG-iconen — akkoord?
-4. **Event-detail als bottom sheet op mobiel** (nieuw, sleepbalkje, slide-up) of gewoon de huidige gecentreerde modal-stijl behouden op mobiel?
+| # | Vraag | Besluit |
+|---|---|---|
+| 1 | Vorm primary-knop | **Pil (999px)**, voor alle knopvarianten |
+| 2 | Bottom navigation | **Vol-breedte**, geen zwevende kaart |
+| 3 | Icon library | **Lucide** (`lucide-react`), nieuwe dependency |
+| 4 | Event-detail op mobiel | **Bottom sheet** (nieuw component), overige modals blijven gecentreerd |
 
-Zodra deze vier beantwoord zijn, werk ik Design System V1 → V2 bij en start ik pas dan met Fase 2 (AppShell/Header/Bottom nav/Button/Card-componenten) — nog steeds geen losse pagina's.
+## Volgende stap: Fase 2 — Componenten
+
+Nog steeds **geen losse pagina's**. Eerst, visueel volledig afgewerkt met bovenstaande tokens:
+
+1. `Button` (primary/secondary/ghost/danger, pil-radius)
+2. `Card` (standaard/featured/compacte lijst-rij)
+3. `Badge` / filter-chip
+4. `Input`
+5. Lucide-iconen geïntegreerd in `NavIcon`
+6. Bottom navigation (vol-breedte, met actieve chip)
+7. Desktop pill-tabs (al aanwezig, tokens toepassen)
+8. `Modal` (desktop) + `BottomSheet` (mobiel, voor Event detail)
+
+Pas daarna, in Fase 3: de Agenda-pagina volledig uitwerken.
