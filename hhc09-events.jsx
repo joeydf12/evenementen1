@@ -609,7 +609,7 @@ function WeekView({ events, weekStart, onWeekChange, categoryColors, primaryColo
           const isToday = day.toDateString()===today.toDateString();
           const dayEvs = events.filter(e => !e.archived && (!e.hidden||adminMode) && dayInRange(day, e.start_time, e.end_time));
           return (
-            <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#ebe8df"}`, borderRadius:6, padding:"6px 4px" }}>
+            <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#ebe8df"}`, borderRadius:12, padding:"6px 4px" }}>
               <div style={{ fontSize:9, color:isToday?primaryColor:"#56554d", fontWeight:700, textTransform:"uppercase", textAlign:"center", marginBottom:2 }}>{DAYS_NL[i]}</div>
               <div style={{ fontSize:18, fontWeight:900, color:isToday?primaryColor:"#56554d", textAlign:"center", lineHeight:1, marginBottom:6 }}>{day.getDate()}</div>
               {dayEvs.map(ev => {
@@ -643,7 +643,7 @@ function YearView({ events, year, onYearChange, categoryColors, primaryColor, on
           const monthEvs = events.filter(e => { const d=new Date(e.start_time); return d.getFullYear()===year&&d.getMonth()===mi; });
           const days = getCalendarDays(year, mi);
           return (
-            <div key={name} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:8, padding:"12px 12px 10px", animation:"fadeInUp .3s both" }}>
+            <div key={name} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:14, padding:"12px 12px 10px", animation:"fadeInUp .3s both" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:monthEvs.length?primaryColor:"#56554d" }}>{name}</div>
                 {monthEvs.length>0 && <span style={{ fontSize:10, background:primaryColor+"22", color:primaryColor, borderRadius:10, padding:"1px 7px", fontWeight:700 }}>{monthEvs.length}</span>}
@@ -1380,9 +1380,9 @@ export default function HHCEvents() {
         .sheet-item:last-child{border-bottom:none}
         .sheet-item:hover{color:var(--color-accent)}
         .filter-toggle{display:none}
-        .cal-day{min-height:76px;padding:6px;border:1.5px solid #f0eee6;border-radius:5px;background:#fff;transition:background .15s}
-        .cal-day.today{border-color:#F18C21}
-        .cal-day.has-events{background:#faf9f6}
+        .cal-day{min-height:76px;padding:6px;border:1.5px solid var(--color-border);border-radius:10px;background:#fff;transition:background var(--motion-base)}
+        .cal-day.today{border-color:var(--color-accent)}
+        .cal-day.has-events{background:var(--color-surface-muted)}
         .cal-dot{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;margin-top:4px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
         select.input option{background:#ffffff}
         .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--color-border)}
@@ -1963,18 +1963,18 @@ export default function HHCEvents() {
               <div>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                    <button onClick={()=>setCalDate(d=>{ const m=d.month===0?11:d.month-1; return {year:d.month===0?d.year-1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"#2E3192", color:"#fff", width:38, height:38, borderRadius:4, fontSize:18, fontWeight:700 }}>‹</button>
-                    <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:30, color:"#2E3192", textTransform:"uppercase", minWidth:220, textAlign:"center" }}>{MONTHS_NL[calDate.month]} {calDate.year}</span>
-                    <button onClick={()=>setCalDate(d=>{ const m=d.month===11?0:d.month+1; return {year:d.month===11?d.year+1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"#2E3192", color:"#fff", width:38, height:38, borderRadius:4, fontSize:18, fontWeight:700 }}>›</button>
+                    <button onClick={()=>setCalDate(d=>{ const m=d.month===0?11:d.month-1; return {year:d.month===0?d.year-1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"var(--color-primary)", color:"#fff", width:36, height:36, borderRadius:"var(--radius-pill)", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
+                    <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:30, color:"var(--color-primary)", textTransform:"uppercase", minWidth:220, textAlign:"center" }}>{MONTHS_NL[calDate.month]} {calDate.year}</span>
+                    <button onClick={()=>setCalDate(d=>{ const m=d.month===11?0:d.month+1; return {year:d.month===11?d.year+1:d.year,month:m}; })} style={{ border:"none", cursor:"pointer", background:"var(--color-primary)", color:"#fff", width:36, height:36, borderRadius:"var(--radius-pill)", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
                   </div>
                   <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={()=>setCalDate({year:new Date().getFullYear(),month:new Date().getMonth()})} style={{ border:"1.5px solid #F18C21", cursor:"pointer", background:"#fff", color:"#F18C21", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:14, textTransform:"uppercase", padding:"8px 18px", borderRadius:4 }}>Vandaag</button>
-                    <button className="btn-sm" onClick={()=>window.print()}>🖨 Afdrukken</button>
+                    <button className="btn-red" onClick={()=>setCalDate({year:new Date().getFullYear(),month:new Date().getMonth()})} style={{ padding:"9px 18px", fontSize:14 }}>Vandaag</button>
+                    <button className="btn-sm no-print" onClick={()=>window.print()} style={{ display:"flex", alignItems:"center", gap:5 }}><Printer size={13} strokeWidth={1.8} /> Afdrukken</button>
                   </div>
                 </div>
-                <div style={{ background:"#fff", border:"1px solid #ebe8df", borderRadius:8, padding:16, boxShadow:"0 1px 3px rgba(0,0,0,.04)" }}>
+                <div style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-card)", padding:16, boxShadow:"var(--shadow-card)" }}>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6, marginBottom:6 }}>
-                    {DAYS_NL.map(d=><div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:800, letterSpacing:1, color:"#b0afa9", padding:"4px 0", textTransform:"uppercase" }}>{d}</div>)}
+                    {DAYS_NL.map(d=><div key={d} style={{ textAlign:"center", fontSize:11, fontWeight:800, letterSpacing:1, color:"var(--color-text-muted)", padding:"4px 0", textTransform:"uppercase" }}>{d}</div>)}
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:6 }}>
                     {calDays.map((day,i) => {
@@ -1983,7 +1983,7 @@ export default function HHCEvents() {
                       const isToday = day.toDateString()===new Date().toDateString();
                       return (
                         <div key={day.toISOString()} className={`cal-day ${isToday?"today":""} ${dayEvs.length?"has-events":""}`}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:isToday?primaryColor:(dayEvs.length?"#1d1f3a":"#c2bfb2"), textAlign:"right", lineHeight:1 }}>{day.getDate()}</div>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:isToday?primaryColor:(dayEvs.length?"var(--color-text)":"var(--color-text-muted)"), textAlign:"right", lineHeight:1 }}>{day.getDate()}</div>
                           {dayEvs.slice(0,2).map(ev => {
                             const cc = categoryColors[ev.category]||primaryColor;
                             return <span key={ev.id} className="cal-dot" style={{ background:cc, color:"#fff" }} onClick={()=>setSelectedEvent(ev)} title={ev.title}>{formatTime(ev.start_time)} {ev.title}</span>;
@@ -1994,7 +1994,7 @@ export default function HHCEvents() {
                   </div>
                 </div>
                 <div style={{ display:"flex", gap:18, flexWrap:"wrap", marginTop:16 }}>
-                  {allCategories.map(cat=><span key={cat} style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:600, color:"#76756f" }}><span style={{ width:12, height:12, borderRadius:3, background:categoryColors[cat]||primaryColor, display:"inline-block" }}/>{cat}</span>)}
+                  {allCategories.map(cat=><span key={cat} style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:600, color:"var(--color-text-secondary)" }}><span style={{ width:10, height:10, borderRadius:"50%", background:categoryColors[cat]||primaryColor, display:"inline-block" }}/>{cat}</span>)}
                 </div>
               </div>
             )}
