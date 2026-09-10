@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -208,30 +209,24 @@ function downloadICS(event) {
   a.click(); URL.revokeObjectURL(a.href);
 }
 
-// ---- NAV ICON (outline, monochroom voor de mobiele navbar) ----
-function NavIcon({ name }) {
-  const p = { width:20, height:20, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.8, strokeLinecap:"round", strokeLinejoin:"round" };
-  switch (name) {
-    case "agenda":
-      return <svg {...p}><circle cx="5" cy="6" r="1"/><circle cx="5" cy="12" r="1"/><circle cx="5" cy="18" r="1"/><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="17" y2="18"/></svg>;
-    case "nieuws":
-      return <svg {...p}><path d="M12 3a4 4 0 0 0-4 4v3.5c0 1.2-.5 2.3-1.4 3.1L6 14h12l-.6-.4a4.2 4.2 0 0 1-1.4-3.1V7a4 4 0 0 0-4-4z"/><path d="M9.5 18a2.5 2.5 0 0 0 5 0"/></svg>;
-    case "bardienst":
-      return <svg {...p}><path d="M5 8h11v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V8z"/><path d="M16 10h2a2 2 0 1 1 0 4h-2"/><line x1="8" y1="5" x2="8" y2="8"/><line x1="11" y1="4" x2="11" y2="8"/></svg>;
-    case "kalender":
-      return <svg {...p}><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>;
-    case "archief":
-      return <svg {...p}><rect x="3" y="6" width="18" height="4" rx="1"/><path d="M5 10v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/><line x1="10" y1="14" x2="14" y2="14"/></svg>;
-    case "statistieken":
-      return <svg {...p}><line x1="4" y1="20" x2="20" y2="20"/><line x1="7" y1="20" x2="7" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="17" y1="20" x2="17" y2="15"/></svg>;
-    case "dashboard":
-      return <svg {...p}><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>;
-    case "idee":
-    case "ideeen":
-      return <svg {...p}><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.6c.6.5 1.05 1.4 1.05 2.4h5.5c0-1 .45-1.9 1.05-2.4A6 6 0 0 0 12 3z"/></svg>;
-    default:
-      return null;
-  }
+// ---- NAV ICON (Lucide, outline, monochroom voor de navigatie) ----
+const NAV_ICONS = {
+  home: Home,
+  agenda: CalendarDays,
+  nieuws: Newspaper,
+  bardienst: Beer,
+  kalender: CalendarRange,
+  archief: Archive,
+  statistieken: BarChart3,
+  dashboard: LayoutDashboard,
+  idee: Lightbulb,
+  ideeen: Lightbulb,
+  meer: MoreHorizontal,
+};
+function NavIcon({ name, size = 20 }) {
+  const Icon = NAV_ICONS[name];
+  if (!Icon) return null;
+  return <Icon size={size} strokeWidth={1.8} />;
 }
 
 // ---- SKELETON CARD ----
@@ -688,7 +683,7 @@ export default function HHCEvents() {
   const [attendees, setAttendees] = useState({});
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
-  const [tab, setTab] = useState("agenda");
+  const [tab, setTab] = useState("home");
   const [filter, setFilter] = useState("Alles");
   const [showPast, setShowPast] = useState(false);
   const [adminMode, setAdminMode] = useState(() => !!getStoredSession());
@@ -772,6 +767,7 @@ export default function HHCEvents() {
   // Ideeënbus
   const [ideas, setIdeas] = useState([]);
   const [showIdeaForm, setShowIdeaForm] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [ideaName, setIdeaName] = useState("");
   const [ideaMessage, setIdeaMessage] = useState("");
   const [submittingIdea, setSubmittingIdea] = useState(false);
@@ -1286,6 +1282,7 @@ export default function HHCEvents() {
   const activeFilters = searchQuery || dateFrom || dateTo || locationFilter !== "Alles";
 
   const tabList = [
+    { id:"home", label:"Home" },
     { id:"agenda", label:"Agenda" },
     { id:"nieuws", label:"Nieuws" },
     { id:"bardienst", label:"Bardienst" },
@@ -1298,58 +1295,98 @@ export default function HHCEvents() {
     ] : []),
   ];
 
+  // Mobiele bottom nav toont max. 5 items; de rest (+ het idee-formulier) zit achter "Meer".
+  const PRIMARY_NAV_IDS = ["home", "agenda", "nieuws", "bardienst"];
+  const primaryNavTabs = tabList.filter(t => PRIMARY_NAV_IDS.includes(t.id));
+  const moreNavTabs = tabList.filter(t => !PRIMARY_NAV_IDS.includes(t.id));
+
+  const TAB_HEADERS = {
+    agenda: { title:"Agenda", subtitle:"Wat staat er op de planning?" },
+    nieuws: { title:"Nieuws", subtitle:"Blijf op de hoogte van het laatste clubnieuws." },
+    bardienst: { title:"Bardienst", subtitle:"Samen houden we de bar draaiende!" },
+    kalender: { title:"Kalender", subtitle:"Overzicht van alle events en activiteiten." },
+    archief: { title:"Archief", subtitle:"Afgelopen events en meer." },
+    statistieken: { title:"Statistieken", subtitle:"Cijfers over de agenda." },
+    dashboard: { title:"Dashboard", subtitle:"In één oogopslag het overzicht." },
+    ideeen: { title:"Ideeënbus", subtitle:"Deel je idee met de spelerscommissie." },
+  };
+
   const thisWeekStart = getWeekStart(new Date());
   const thisWeekEnd = new Date(thisWeekStart); thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
   const bardienstThisWeek = bardienst.filter(b => { const d = new Date(b.shift_date); return d >= thisWeekStart && d < thisWeekEnd; });
 
   return (
-    <div style={{ minHeight:"100vh", background:"#f3f1ea", color:"#1d1f3a", fontFamily:"'Saira Condensed','Arial Narrow',Arial,sans-serif" }}>
+    <div style={{ minHeight:"100vh", background:"#F5F7FB", color:"#172033", fontFamily:"'Saira Condensed','Arial Narrow',Arial,sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&family=Barlow:wght@400;500;600;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
+        :root{
+          --color-primary:#2E3192; --color-primary-hover:#23256E;
+          --color-accent:#F18C21; --color-accent-hover:#DB7A12;
+          --color-bg:#F5F7FB; --color-surface:#ffffff; --color-surface-muted:#EEF1F8;
+          --color-border:#E4E7EF; --color-text:#172033; --color-text-secondary:#667085; --color-text-muted:#98A2B3;
+          --color-success:#20A464; --color-warning:#F59E0B; --color-danger:#DC3545;
+          --radius-card:16px; --radius-card-featured:20px; --radius-row:14px; --radius-input:11px; --radius-pill:999px;
+          --shadow-card:0 2px 6px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+          --shadow-card-hover:0 4px 10px rgba(16,24,40,.05),0 14px 32px rgba(16,24,40,.08);
+          --shadow-nav:0 -2px 10px rgba(16,24,40,.06);
+          --shadow-modal:0 24px 64px rgba(16,24,40,.18);
+          --motion-fast:150ms ease-out; --motion-base:180ms ease-out; --motion-sheet:220ms cubic-bezier(.16,1,.3,1);
+        }
         ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${primaryColor};border-radius:2px}
         @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
-        .ev-card{background:#ffffff;border:1px solid #ebe8df;border-radius:6px;padding:18px 20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;animation:fadeInUp .25s ease both;box-shadow:0 1px 2px rgba(0,0,0,.03)}
-        .ev-card:hover{background:#fffdf8;transform:translateX(3px);box-shadow:-4px 0 20px ${primaryColor}22,0 1px 3px rgba(0,0,0,.06)}
+        @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        button,.input,select.input{font-family:inherit}
+        :focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+        .ev-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-card);padding:18px 20px;cursor:pointer;transition:box-shadow var(--motion-base),transform var(--motion-base);position:relative;overflow:hidden;animation:fadeInUp .25s ease both;box-shadow:var(--shadow-card)}
+        .ev-card:hover{box-shadow:var(--shadow-card-hover);transform:translateY(-2px)}
         .ev-card.hidden-ev{opacity:.5;border-style:dashed}
         .ev-card.drag-over{border-top:2px solid ${primaryColor};transform:translateY(-2px)}
         .ev-card.dragging{opacity:.45;transform:scale(.98);box-shadow:none;cursor:grabbing}
-        .filter-btn{background:#fff;border:1.5px solid #e7e4da;color:#76756f;padding:7px 16px;border-radius:22px;cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;transition:all .2s;text-transform:uppercase}
+        .filter-btn{background:#fff;border:1.5px solid var(--color-border);color:var(--color-text-secondary);padding:8px 18px;border-radius:var(--radius-pill);cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;transition:all var(--motion-base);text-transform:uppercase}
         .filter-btn.active{background:var(--fc,${primaryColor});border-color:var(--fc,${primaryColor});color:white}
         .filter-btn:hover:not(.active){border-color:var(--fc,${primaryColor});color:var(--fc,${primaryColor})}
-        .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);animation:fadeIn .15s ease}
-        .modal{background:#ffffff;border:1px solid #e7e4da;border-radius:12px;padding:32px;width:100%;max-width:520px;max-height:90vh;max-height:90dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-        .modal-actions-sticky{position:sticky;bottom:-32px;margin:8px -32px -32px;padding:14px 32px;background:#ffffff;border-top:1px solid #ebe8df}
-        .input{background:#ffffff;border:1px solid #e7e4da;color:#1d1f3a;padding:10px 14px;border-radius:6px;font-family:inherit;font-size:16px;width:100%;transition:border-color .2s;min-width:0}
-        .input:focus{outline:none;border-color:${primaryColor}}
-        .btn-red{background:${primaryColor};color:white;border:none;padding:12px 24px;border-radius:5px;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
-        .btn-red:hover{filter:brightness(1.15)}
-        .btn-ghost{background:transparent;color:#76756f;border:1px solid #e7e4da;padding:10px 20px;border-radius:6px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
-        .btn-ghost:hover{border-color:#b0afa9;color:#222}
-        .btn-ghost-onbrand{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.5);padding:10px 20px;border-radius:6px;font-family:inherit;font-size:14px;cursor:pointer;transition:all .2s}
-        .btn-ghost-onbrand:hover{background:rgba(255,255,255,.32)}
-        .btn-sm{background:#ebe8df;border:1px solid #e7e4da;color:#76756f;padding:5px 12px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;transition:all .15s}
-        .btn-sm:hover{color:#222;border-color:#b0afa9}
-        .pill-tab{background:#ffffff2e;border:none;color:#fff;padding:11px 22px 13px;border-radius:4px 4px 0 0;cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
-        .pill-tab.active{background:#fff;color:${primaryColor}}
-        .pill-tab:hover:not(.active){background:#ffffff44}
-        .admin-corner{position:absolute;top:16px;right:20px;z-index:5;display:flex;align-items:center;gap:8px}
+        .badge{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+        .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px);animation:fadeIn .15s ease}
+        .modal{background:var(--color-surface);border:1px solid var(--color-border);border-radius:20px;padding:32px;width:100%;max-width:520px;max-height:90vh;max-height:90dvh;overflow-y:auto;box-shadow:var(--shadow-modal)}
+        .modal-actions-sticky{position:sticky;bottom:-32px;margin:8px -32px -32px;padding:14px 32px;background:var(--color-surface);border-top:1px solid var(--color-border)}
+        .input{background:var(--color-surface);border:1px solid var(--color-border);color:var(--color-text);padding:12px 16px;border-radius:var(--radius-input);font-size:16px;width:100%;min-height:46px;transition:border-color var(--motion-base),box-shadow var(--motion-base);min-width:0}
+        .input:focus{outline:none;border-color:${primaryColor};box-shadow:0 0 0 3px ${primaryColor}26}
+        .btn-red{background:var(--color-accent);color:white;border:none;padding:12px 26px;border-radius:var(--radius-pill);font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all var(--motion-base);min-height:44px}
+        .btn-red:hover{background:var(--color-accent-hover)}
+        .btn-red:active{transform:scale(.98)}
+        .btn-ghost{background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);padding:10px 20px;border-radius:var(--radius-pill);font-size:14px;cursor:pointer;transition:all var(--motion-base)}
+        .btn-ghost:hover{border-color:var(--color-text-muted);color:var(--color-text)}
+        .btn-ghost-onbrand{background:#ffffff;color:var(--color-primary);border:1px solid var(--color-border);padding:10px 20px;border-radius:var(--radius-pill);font-size:14px;cursor:pointer;transition:all var(--motion-base)}
+        .btn-ghost-onbrand:hover{border-color:var(--color-primary)}
+        .btn-sm{background:var(--color-surface-muted);border:1px solid var(--color-border);color:var(--color-text-secondary);padding:6px 14px;border-radius:var(--radius-pill);cursor:pointer;font-size:12px;transition:all var(--motion-fast)}
+        .btn-sm:hover{color:var(--color-text);border-color:var(--color-text-muted)}
+        .pill-tab{background:transparent;border:1px solid var(--color-border);color:#56554d;padding:9px 18px;border-radius:var(--radius-pill);cursor:pointer;font-family:'Saira Condensed',sans-serif;font-size:14px;font-weight:800;font-style:italic;letter-spacing:.5px;text-transform:uppercase;transition:all var(--motion-base);white-space:nowrap;flex-shrink:0}
+        .pill-tab.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+        .pill-tab:hover:not(.active){border-color:var(--color-primary);color:var(--color-primary)}
+        .admin-corner{display:flex;align-items:center;gap:8px}
         .bottom-nav{display:none}
-        .bottom-nav-btn{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px 6px;background:transparent;border:none;color:#76756f;font-family:inherit;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
-        .bottom-nav-btn .bn-icon{display:flex;align-items:center;justify-content:center;height:20px}
-        .bottom-nav-btn.active{color:${primaryColor}}
+        .bottom-nav-btn{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 6px;background:transparent;border:none;color:var(--color-text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;white-space:nowrap}
+        .bottom-nav-btn .bn-icon{display:flex;align-items:center;justify-content:center;height:26px;width:40px;border-radius:12px;transition:background var(--motion-base)}
+        .bottom-nav-btn.active{color:var(--color-accent)}
+        .bottom-nav-btn.active .bn-icon{background:var(--color-accent);background:color-mix(in srgb, var(--color-accent) 14%, transparent)}
+        .sheet-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);animation:fadeIn .15s ease}
+        .sheet{background:var(--color-surface);border-radius:20px 20px 0 0;padding:8px 20px 24px;width:100%;max-width:560px;max-height:85vh;max-height:85dvh;overflow-y:auto;box-shadow:var(--shadow-modal);animation:sheetUp var(--motion-sheet) both}
+        .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--color-border);margin:0 auto 16px}
+        .sheet-item{display:flex;align-items:center;gap:14px;width:100%;background:transparent;border:none;padding:13px 4px;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;color:var(--color-text);cursor:pointer;border-bottom:1px solid var(--color-border);text-align:left}
+        .sheet-item:last-child{border-bottom:none}
+        .sheet-item:hover{color:var(--color-accent)}
         .filter-toggle{display:none}
         .cal-day{min-height:76px;padding:6px;border:1.5px solid #f0eee6;border-radius:5px;background:#fff;transition:background .15s}
         .cal-day.today{border-color:#F18C21}
         .cal-day.has-events{background:#faf9f6}
         .cal-dot{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;margin-top:4px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
         select.input option{background:#ffffff}
-        .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #ebe8df}
+        .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--color-border)}
         .stat-bar{background:${primaryColor};border-radius:4px 4px 0 0;min-width:8px;transition:height .5s ease}
-        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#ffffff;border:1px solid #e7e4da;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:700;z-index:999;animation:fadeInUp .2s ease;box-shadow:0 8px 30px rgba(0,0,0,.18);white-space:nowrap}
+        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-pill);padding:12px 24px;font-size:14px;font-weight:700;z-index:999;animation:fadeInUp .2s ease;box-shadow:var(--shadow-card-hover);white-space:nowrap}
         @media print{nav,header,.no-print{display:none!important}body{background:white;color:black}.ev-card{border:1px solid #ccc;break-inside:avoid;margin-bottom:8px}.print-title{display:block!important}}
         .print-title{display:none}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1358,15 +1395,15 @@ export default function HHCEvents() {
           .grid-2,.grid-3{grid-template-columns:1fr}
           .modal{padding:22px 18px}
           .modal-actions-sticky{margin:8px -18px -22px;padding:12px 18px}
-          .btn-ghost-onbrand,.btn-ghost,.btn-red{padding:9px 14px;font-size:13px}
+          .btn-ghost-onbrand,.btn-ghost,.btn-red{padding:9px 16px;font-size:13px}
           .btn-sm{padding:7px 12px;font-size:12px;min-height:32px}
           .ev-card{padding:14px 16px}
           .desktop-tabs,.header-chevron{display:none!important}
-          .admin-corner{top:12px;right:12px;gap:6px}
+          .admin-corner{gap:6px}
           .admin-corner .btn-ghost-onbrand{padding:7px 11px;font-size:11px}
           main{padding-bottom:92px!important}
-          .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid #ebe8df;z-index:90;overflow-x:auto;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-          .filter-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;border:1px solid #e7e4da;color:#56554d;padding:12px 16px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-bottom:10px}
+          .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid var(--color-border);z-index:90;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:var(--shadow-nav)}
+          .filter-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;border:1px solid var(--color-border);color:#56554d;padding:12px 16px;border-radius:var(--radius-input);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-bottom:10px}
           .filter-bar-content{display:none}
           .filter-bar-content.expanded{display:block;animation:fadeInUp .2s ease both}
         }
@@ -1387,49 +1424,44 @@ export default function HHCEvents() {
       )}
 
       {/* Header */}
-      <header className="no-print" style={{ background:"#F18C21", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:-30, right:40, width:220, height:200, backgroundImage:"radial-gradient(#ffffff55 1.7px,transparent 1.8px)", backgroundSize:"15px 15px", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", top:0, bottom:0, left:"46%", width:90, background:"#ffffff1f", transform:"skewX(-15deg)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", top:0, bottom:0, left:"53%", width:26, background:"#ffffff1f", transform:"skewX(-15deg)", pointerEvents:"none" }} />
-        <div className="header-chevron" style={{ position:"absolute", top:"50%", right:24, transform:"translateY(-50%)", fontSize:64, fontWeight:900, fontStyle:"italic", color:"#ffffff26", pointerEvents:"none", letterSpacing:-10 }}>❯❯❯</div>
-
-        <div className="admin-corner">
-          {adminMode ? (
-            <>
-              <span style={{ fontSize:11, color:"#2E3192", background:"#ffffffcc", padding:"3px 10px", borderRadius:12, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
-              <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
-            </>
-          ) : (
-            <button className="btn-ghost-onbrand" onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} style={{ fontSize:12 }}>⚙ Beheer</button>
-          )}
-        </div>
-
-        <div style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0", position:"relative" }}>
-          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", flexWrap:"wrap", gap:12, paddingRight:110 }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
-                <img
-                  src={clubSettings.logo || clubLogo}
-                  alt="logo"
-                  style={{ height:34, width:34, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0 }}
-                  onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
-                />
-                <span style={{ fontSize:11, fontWeight:800, letterSpacing:2, textTransform:"uppercase", color:"#2E3192" }}>{clubSettings.name}</span>
+      <header className="no-print" style={{ background:"#f3f1ea", borderBottom:"1px solid #ebe8df" }}>
+        <div style={{ maxWidth:960, margin:"0 auto", padding:"18px 20px 16px" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+              <img
+                src={clubSettings.logo || clubLogo}
+                alt="logo"
+                style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"1px solid #ebe8df" }}
+                onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
+              />
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#2E3192", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
+                <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
               </div>
-              <h1 style={{ fontSize:"clamp(28px,6vw,52px)", fontWeight:900, fontStyle:"italic", letterSpacing:"-1px", lineHeight:.95, textTransform:"uppercase", color:"#fff" }}>{clubSettings.subtitle}</h1>
             </div>
-            <div style={{ display:"flex", gap:8, alignItems:"center", paddingBottom:4, flexWrap:"wrap" }}>
-              {adminMode && (
+            <div className="admin-corner">
+              {adminMode ? (
                 <>
-                  {canEdit && <button className="btn-red" onClick={openNew}>+ Nieuw</button>}
-                  {canSettings && <button className="btn-ghost-onbrand" onClick={()=>setShowSettings(true)} style={{ fontSize:12 }}>⚙ Instellingen</button>}
+                  <span style={{ fontSize:11, color:"#2E3192", background:"#2E319214", padding:"3px 10px", borderRadius:999, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
+                  {canEdit && <button className="btn-red" onClick={openNew} style={{ fontSize:13, padding:"9px 16px" }}>+ Nieuw</button>}
+                  {canSettings && <button className="btn-ghost-onbrand" onClick={()=>setShowSettings(true)} style={{ padding:9, display:"flex" }} aria-label="Instellingen"><Settings size={17} strokeWidth={1.8} /></button>}
+                  <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
                 </>
+              ) : (
+                <button className="btn-ghost-onbrand" onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} style={{ padding:9, display:"flex" }} aria-label="Beheer"><Settings size={17} strokeWidth={1.8} /></button>
               )}
             </div>
           </div>
 
+          {tab!=="home" && TAB_HEADERS[tab] && (
+            <div style={{ marginTop:20 }}>
+              <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,38px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>{TAB_HEADERS[tab].title}</h1>
+              <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{TAB_HEADERS[tab].subtitle}</div>
+            </div>
+          )}
+
           {/* Desktop pill tabs, attached to the header */}
-          <div className="desktop-tabs" style={{ display:"flex", gap:6, overflowX:"auto", marginTop:16, paddingBottom:16 }}>
+          <div className="desktop-tabs" style={{ display:"flex", gap:8, overflowX:"auto", marginTop:20, paddingBottom:2 }}>
             {tabList.map(t => (
               <button key={t.id} className={`pill-tab ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>
             ))}
@@ -1438,103 +1470,134 @@ export default function HHCEvents() {
         </div>
       </header>
 
-      {/* Mobile bottom navbar -- alle tabs + idee-knop */}
+      {/* Mobile bottom navbar -- Home/Agenda/Nieuws/Bardienst + Meer */}
       <nav className="bottom-nav no-print">
-        {tabList.map(t => (
+        {primaryNavTabs.map(t => (
           <button key={t.id} className={`bottom-nav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>
             <span className="bn-icon"><NavIcon name={t.id} /></span>
             <span>{t.label}</span>
           </button>
         ))}
-        <button className="bottom-nav-btn" onClick={()=>setShowIdeaForm(true)}>
-          <span className="bn-icon"><NavIcon name="idee" /></span>
-          <span>Idee</span>
+        <button className={`bottom-nav-btn ${moreNavTabs.some(t=>t.id===tab)?"active":""}`} onClick={()=>setShowMoreSheet(true)}>
+          <span className="bn-icon"><NavIcon name="meer" /></span>
+          <span>Meer</span>
         </button>
       </nav>
 
-      {/* Eerstvolgende */}
-      {upcomingTop.length > 0 && (() => {
-        const ev = upcomingTop[0];
-        const days = daysUntil(ev.start_time);
-        const d = new Date(ev.start_time);
-        const daysLabel = days<0?"Afgelopen":days===0?"Vandaag":days===1?"Morgen":`${days} dagen`;
-        return (
-          <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-            <div style={{ fontSize:12, fontWeight:800, letterSpacing:3, color:primaryColor, textTransform:"uppercase", marginBottom:10 }}>❯❯ Eerstvolgende</div>
-            <div onClick={()=>setSelectedEvent(ev)} style={{ position:"relative", background:"#2E3192", borderRadius:6, padding:"26px 28px", overflow:"hidden", cursor:"pointer", animation:"fadeInUp .3s both" }}>
-              <div style={{ position:"absolute", top:0, bottom:0, right:0, width:200, background:"#F18C21", clipPath:"polygon(40% 0,100% 0,100% 100%,0 100%)" }} />
-              <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
-              <div style={{ position:"relative", display:"flex", alignItems:"center", gap:26, flexWrap:"wrap" }}>
-                <div style={{ textAlign:"center", color:"#fff", flex:"none" }}>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:64, lineHeight:.75 }}>{d.getDate()}</div>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:20, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
-                </div>
-                <div style={{ flex:1, minWidth:200 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, flexWrap:"wrap" }}>
-                    <span style={{ background:"#fff", color:"#2E3192", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
-                    <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:"#fff", textTransform:"uppercase" }}>{daysLabel}</span>
-                  </div>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:36, lineHeight:.9, color:"#fff", textTransform:"uppercase" }}>{ev.title}</div>
-                  <div style={{ fontSize:15, color:"#c9cbef", marginTop:8 }}>{formatDate(ev.start_time)} · {formatTime(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
-                  {ev.cost > 0 && <div style={{ fontSize:13, color:"#c9cbef", marginTop:4 }}>💶 €{Number(ev.cost).toFixed(2)}</div>}
-                </div>
-              </div>
-            </div>
-            {upcomingTop.length > 1 && (
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, marginTop:10, paddingBottom:20 }}>
-                {upcomingTop.slice(1).map((ev2,i) => {
-                  const cc2 = categoryColors[ev2.category] || primaryColor;
-                  const days2 = daysUntil(ev2.start_time);
-                  return (
-                    <div key={ev2.id} onClick={()=>setSelectedEvent(ev2)} style={{ background:"#ffffff", border:`1px solid ${cc2}33`, borderRadius:8, padding:"12px 16px", cursor:"pointer", animation:`fadeInUp .3s ${(i+1)*0.08}s both` }}>
-                      <div style={{ fontSize:14, fontWeight:700, textTransform:"uppercase" }}>{ev2.title}</div>
-                      <div style={{ fontSize:12, color:"#76756f", marginTop:2, fontFamily:"Barlow,sans-serif" }}>{formatDate(ev2.start_time)}</div>
-                      <div style={{ marginTop:6, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                        <span className="badge" style={{ background:cc2+"22", color:cc2 }}>{ev2.category}</span>
-                        <span style={{ fontSize:11, fontWeight:700, color:days2<=3?primaryColor:"#b0afa9" }}>{days2===0?"VANDAAG":days2===1?"MORGEN":`${days2}D`}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Vastgepinde mededelingen */}
-      {news.some(n=>n.pinned) && (
-        <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-          <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", flexDirection:"column", gap:10, cursor:"pointer" }} onClick={()=>setTab("nieuws")}>
-            {news.filter(n=>n.pinned).map(n => (
-              <div key={n.id} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-                <span style={{ fontSize:22 }}>📌</span>
-                <div>
-                  <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{n.title}</div>
-                  <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{n.body.length>140?n.body.slice(0,140)+"…":n.body}</div>
-                </div>
-              </div>
+      {/* "Meer"-sheet: overige tabs + idee-formulier */}
+      {showMoreSheet && (
+        <div className="sheet-overlay no-print" onClick={()=>setShowMoreSheet(false)}>
+          <div className="sheet" onClick={e=>e.stopPropagation()}>
+            <div className="sheet-handle" />
+            {moreNavTabs.map(t => (
+              <button key={t.id} className="sheet-item" onClick={()=>{ setTab(t.id); setShowMoreSheet(false); }}>
+                <NavIcon name={t.id} /> {t.label}
+              </button>
             ))}
+            <button className="sheet-item" onClick={()=>{ setShowIdeaForm(true); setShowMoreSheet(false); }}>
+              <NavIcon name="idee" /> Idee voor spelerscommissie
+            </button>
           </div>
         </div>
       )}
 
-      {/* Bardienst deze week */}
-      {bardienstThisWeek.length > 0 && (
-        <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-          <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", cursor:"pointer" }} onClick={()=>setTab("bardienst")}>
-            <span style={{ fontSize:26 }}>🍺</span>
-            <div style={{ flex:1, minWidth:200 }}>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:2, textTransform:"uppercase", color:primaryColor, marginBottom:4 }}>Bardienst deze week</div>
-              {bardienstThisWeek.map(b => (
-                <div key={b.id} style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>
-                  <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong>{b.time_label?` · ${b.time_label}`:""} — {b.names}
+      {/* HOME */}
+      {tab==="home" && (
+        <>
+          {/* Eerstvolgend event */}
+          {upcomingTop.length > 0 && (() => {
+            const ev = upcomingTop[0];
+            const d = new Date(ev.start_time);
+            return (
+              <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"4px 20px 0" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                  <span style={{ fontSize:12, fontWeight:800, letterSpacing:2, color:"#76756f", textTransform:"uppercase" }}>Eerstvolgend event</span>
+                  <button onClick={()=>setTab("agenda")} style={{ background:"none", border:"none", cursor:"pointer", color:"#2E3192", fontSize:20, lineHeight:1 }}>›</button>
                 </div>
-              ))}
+                <div onClick={()=>setSelectedEvent(ev)} style={{ position:"relative", background:"#2E3192", borderRadius:16, padding:"22px 24px", overflow:"hidden", cursor:"pointer", animation:"fadeInUp .3s both" }}>
+                  <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff33 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
+                  <div style={{ position:"relative", display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
+                    <div style={{ background:"#fff", borderRadius:10, width:54, padding:"6px 0", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:10, color:"#F18C21", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{weekday:"short"})}</div>
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:24, lineHeight:1, color:"#2E3192" }}>{d.getDate()}</div>
+                      <div style={{ fontSize:9, fontWeight:800, color:"#76756f", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                    </div>
+                    <div style={{ flex:1, minWidth:170 }}>
+                      <span style={{ background:"#F18C21", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:24, lineHeight:1.05, color:"#fff", textTransform:"uppercase", marginTop:8 }}>{ev.title}</div>
+                      <div style={{ fontSize:13, color:"#c9cbef", marginTop:6 }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}{ev.location?` · ${ev.location}`:""}</div>
+                      <div style={{ fontSize:12, color:"#c9cbef", marginTop:2 }}>👥 {(attendees[ev.id]||[]).length} aangemeld</div>
+                    </div>
+                  </div>
+                  <button className="btn-red" style={{ background:"#F18C21", marginTop:18, width:"100%" }} onClick={e=>{ e.stopPropagation(); setShowAttendees(ev); }}>Ik kom!</button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Agenda preview */}
+          {upcomingTop.length > 0 && (
+            <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"26px 20px 0" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:20, color:"#2E3192", textTransform:"uppercase" }}>Agenda</span>
+                <button onClick={()=>setTab("agenda")} style={{ background:"none", border:"none", color:"#76756f", fontSize:12, fontWeight:700, letterSpacing:.5, textTransform:"uppercase", cursor:"pointer", fontFamily:"Barlow,sans-serif" }}>Bekijk alles ›</button>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                {upcomingTop.map((ev2,i) => {
+                  const cc2 = categoryColors[ev2.category] || primaryColor;
+                  return (
+                    <div key={ev2.id} className="ev-card" onClick={()=>setSelectedEvent(ev2)} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 16px", animationDelay:`${i*0.05}s` }}>
+                      <div style={{ background:cc2, color:"#fff", borderRadius:8, width:46, height:46, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:17, fontWeight:900, lineHeight:1 }}>{new Date(ev2.start_time).getDate()}</div>
+                        <div style={{ fontSize:8, fontWeight:700, textTransform:"uppercase" }}>{new Date(ev2.start_time).toLocaleDateString("nl-NL",{month:"short"})}</div>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:17, fontWeight:800, textTransform:"uppercase", lineHeight:1.1 }}>{ev2.title}</div>
+                        <div style={{ fontSize:12, color:"#76756f", marginTop:3, fontFamily:"Barlow,sans-serif" }}>{formatDate(ev2.start_time)} · {formatTime(ev2.start_time)}{ev2.location?` · ${ev2.location}`:""}</div>
+                      </div>
+                      <span style={{ fontSize:20, color:"#c2bfb2", flexShrink:0 }}>›</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <button className="btn-sm" onClick={e=>{ e.stopPropagation(); setTab("bardienst"); }}>Bekijk alles</button>
-          </div>
-        </div>
+          )}
+
+          {/* Vastgepinde mededelingen */}
+          {news.some(n=>n.pinned) && (
+            <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
+              <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", flexDirection:"column", gap:10, cursor:"pointer" }} onClick={()=>setTab("nieuws")}>
+                {news.filter(n=>n.pinned).map(n => (
+                  <div key={n.id} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <span style={{ fontSize:22 }}>📌</span>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{n.title}</div>
+                      <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{n.body.length>140?n.body.slice(0,140)+"…":n.body}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bardienst deze week */}
+          {bardienstThisWeek.length > 0 && (
+            <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
+              <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", cursor:"pointer" }} onClick={()=>setTab("bardienst")}>
+                <span style={{ fontSize:26 }}>🍺</span>
+                <div style={{ flex:1, minWidth:200 }}>
+                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:2, textTransform:"uppercase", color:primaryColor, marginBottom:4 }}>Bardienst deze week</div>
+                  {bardienstThisWeek.map(b => (
+                    <div key={b.id} style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>
+                      <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong>{b.time_label?` · ${b.time_label}`:""} — {b.names}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn-sm" onClick={e=>{ e.stopPropagation(); setTab("bardienst"); }}>Bekijk alles</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="print-title" style={{ padding:"20px 20px 0", fontSize:24, fontWeight:700 }}>{clubSettings.name} — {clubSettings.subtitle} — {MONTHS_NL[calDate.month]} {calDate.year}</div>
