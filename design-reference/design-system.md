@@ -1,6 +1,6 @@
 # HHC'09 Clubagenda — Design System V2
 
-Status: **goedgekeurd — open vragen uit V1 zijn beantwoord. Klaar voor Fase 2 (componenten), nog geen losse pagina's.**
+Status: **Fase 2 (componenten) gebouwd. Nog geen losse pagina's uitgewerkt — dat is Fase 3.**
 Referentiebeelden: [`hhc09-nieuw-design-mockup.png`](./hhc09-nieuw-design-mockup.png) (stijlreferentie, niet content).
 
 ---
