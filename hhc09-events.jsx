@@ -2369,7 +2369,7 @@ export default function HHCEvents() {
         const cc = n.pinned ? "#F18C21" : "#2E3192";
         return (
           <div className="modal-overlay" onClick={()=>setSelectedNews(null)}>
-            <div className="modal" style={{ maxWidth:540, padding:0, overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth:540, padding:0 }} onClick={e=>e.stopPropagation()}>
               <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
                 <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
                 <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
