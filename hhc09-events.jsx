@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode } from "lucide-react";
+import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -1754,44 +1754,42 @@ export default function HHCEvents() {
         {/* NIEUWS */}
         {tab==="nieuws" && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Mededelingen</span>
-              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{news.length}</span>
-              <div style={{ flex:1, height:3, background:"#F18C21", minWidth:20 }} />
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{news.length} mededeling{news.length!==1?"en":""}</span>
               {canEdit && <button className="btn-red" onClick={openNewNews}>+ Mededeling plaatsen</button>}
             </div>
             {news.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
-                <div style={{ fontSize:48, marginBottom:16 }}>📢</div>
-                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen mededelingen</div>
+                <Megaphone size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen mededelingen</div>
                 {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNewNews}>Eerste mededeling plaatsen</button>}
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {news.map(n => (
-                  <div key={n.id} className="ev-card" onClick={()=>setSelectedNews(n)} style={{ borderLeft:n.pinned?"4px solid #F18C21":"1px solid #ebe8df" }}>
+                  <div key={n.id} className="ev-card" onClick={()=>setSelectedNews(n)} style={{ borderLeft:n.pinned?"4px solid var(--color-accent)":"1px solid var(--color-border)" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:16 }}>
                       {n.image_url ? (
-                        <div style={{ width:60, height:60, borderRadius:8, overflow:"hidden", flexShrink:0 }}>
+                        <div style={{ width:60, height:60, borderRadius:12, overflow:"hidden", flexShrink:0 }}>
                           <img src={n.image_url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>{ e.target.onerror=null; e.target.parentElement.style.display="none"; }} />
                         </div>
                       ) : (
-                        <div style={{ width:60, height:60, borderRadius:8, background:n.pinned?"#F18C21":"#2E3192", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>📢</div>
+                        <div style={{ width:60, height:60, borderRadius:12, background:n.pinned?"var(--color-accent)":"var(--color-primary)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><Megaphone size={24} strokeWidth={1.8} /></div>
                       )}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
-                          {n.pinned && <span className="badge" style={{ background:"#F18C2122", color:"#F18C21" }}>📌 Vastgepind</span>}
-                          <span style={{ fontSize:12, color:"#b0afa9" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
+                          {n.pinned && <span className="badge" style={{ background:"var(--color-accent)22", color:"var(--color-accent-hover)", display:"inline-flex", alignItems:"center", gap:4 }}><Pin size={10} strokeWidth={2} /> Vastgepind</span>}
+                          <span style={{ fontSize:12, color:"var(--color-text-muted)" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
                         </div>
-                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", lineHeight:1.1, color:"#1d1f3a" }}>{n.title}</div>
-                        <div style={{ fontSize:13, color:"#76756f", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.body}</div>
+                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", lineHeight:1.1, color:"var(--color-text)" }}>{n.title}</div>
+                        <div style={{ fontSize:13, color:"var(--color-text-secondary)", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.body}</div>
                       </div>
-                      <span style={{ fontSize:22, color:"#c2bfb2", flexShrink:0 }}>›</span>
+                      <ChevronRight size={20} strokeWidth={1.8} style={{ color:"var(--color-text-muted)", flexShrink:0 }} />
                     </div>
                     {canEdit && (
                       <div style={{ marginTop:12, display:"flex", gap:6 }} onClick={e=>e.stopPropagation()}>
                         <button className="btn-sm" onClick={()=>openEditNews(n)}>Bewerken</button>
-                        {canDelete && <button className="btn-sm" onClick={()=>handleDeleteNews(n.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
+                        {canDelete && <button className="btn-sm" onClick={()=>handleDeleteNews(n.id)} style={{ color:"var(--color-danger)" }}>Verwijderen</button>}
                       </div>
                     )}
                   </div>
@@ -2436,20 +2434,21 @@ export default function HHCEvents() {
         const n = selectedNews;
         const cc = n.pinned ? "#F18C21" : "#2E3192";
         return (
-          <div className="modal-overlay" onClick={()=>setSelectedNews(null)}>
-            <div className="modal" style={{ maxWidth:540, padding:0 }} onClick={e=>e.stopPropagation()}>
+          <div className="modal-overlay sheet-mode" onClick={()=>setSelectedNews(null)}>
+            <div className="modal sheet-mode" style={{ maxWidth:640, padding:0 }} onClick={e=>e.stopPropagation()}>
+              <div className="modal-drag-handle" />
               <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
                 <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
                 <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
                   <div>
-                    {n.pinned && <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>📌 Vastgepind</span>}
+                    {n.pinned && <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, display:"inline-flex", alignItems:"center", gap:4 }}><Pin size={11} strokeWidth={2} /> Vastgepind</span>}
                     <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:30, lineHeight:1, color:"#fff", textTransform:"uppercase", marginTop:n.pinned?10:0 }}>{n.title}</div>
                   </div>
-                  <button onClick={()=>setSelectedNews(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", fontSize:18, flex:"none" }}>✕</button>
+                  <button onClick={()=>setSelectedNews(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flex:"none" }} aria-label="Sluiten"><X size={17} strokeWidth={2} /></button>
                 </div>
               </div>
               <div style={{ padding:"24px 28px 28px" }}>
-                <div style={{ fontSize:12, color:"#b0afa9", marginBottom:16 }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</div>
+                <div style={{ fontSize:12, color:"var(--color-text-muted)", marginBottom:16 }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</div>
                 {/* Nieuw #51: afbeeldingengalerij -- CSS scroll-snap i.p.v. eigen carrousel-state (dit is een IIFE, geen component, dus geen hooks) */}
                 {(() => {
                   const imgs = (Array.isArray(n.image_urls) && n.image_urls.length) ? n.image_urls : (n.image_url ? [n.image_url] : []);
@@ -2465,11 +2464,11 @@ export default function HHCEvents() {
                     </div>
                   );
                 })()}
-                <div style={{ fontSize:15, color:"#1d1f3a", lineHeight:1.6, whiteSpace:"pre-wrap" }}>{n.body}</div>
+                <div style={{ fontSize:15, color:"var(--color-text)", lineHeight:1.6, whiteSpace:"pre-wrap" }}>{n.body}</div>
                 <div style={{ marginTop:22, display:"flex", gap:8, flexWrap:"wrap" }}>
                   <button className="btn-ghost" onClick={()=>setSelectedNews(null)}>Sluiten</button>
                   {canEdit && <button className="btn-sm" onClick={()=>{ setSelectedNews(null); openEditNews(n); }}>Bewerken</button>}
-                  {canDelete && <button className="btn-sm" onClick={()=>{ setSelectedNews(null); handleDeleteNews(n.id); }} style={{ color:"#e63946" }}>Verwijderen</button>}
+                  {canDelete && <button className="btn-sm" onClick={()=>{ setSelectedNews(null); handleDeleteNews(n.id); }} style={{ color:"var(--color-danger)" }}>Verwijderen</button>}
                 </div>
               </div>
             </div>
