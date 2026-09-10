@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin, Shirt, StickyNote } from "lucide-react";
+import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin, Shirt, StickyNote, Trash2 } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -2012,16 +2012,14 @@ export default function HHCEvents() {
         {/* ARCHIEF */}
         {tab==="archief" && (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Archief</span>
-              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{pastEvents.length} events</span>
-              <div style={{ flex:1, height:3, background:"#F18C21" }} />
+            <div style={{ marginBottom:20 }}>
+              <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{pastEvents.length} afgelopen event{pastEvents.length!==1?"s":""}</span>
             </div>
             {pastEvents.length===0
               ? (
                 <div style={{ textAlign:"center", padding:60 }}>
-                  <div style={{ fontSize:48, marginBottom:16 }}>🗄</div>
-                  <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen verleden evenementen</div>
+                  <Archive size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                  <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen verleden evenementen</div>
                 </div>
               )
               : <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
@@ -2030,17 +2028,17 @@ export default function HHCEvents() {
                     const att = (attendees[ev.id]||[]).length;
                     const d = new Date(ev.start_time);
                     return (
-                      <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", alignItems:"center", gap:14, background:"#fff", border:"1px solid #ebe8df", borderLeft:`4px solid ${cc}`, borderRadius:6, padding:"13px 16px", cursor:"pointer" }}>
+                      <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", alignItems:"center", gap:14, background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:`4px solid ${cc}`, borderRadius:14, padding:"13px 16px", cursor:"pointer" }}>
                         <div style={{ flex:"none", textAlign:"center", width:50 }}>
                           <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:22, color:cc, lineHeight:.85 }}>{d.getDate()}</div>
-                          <div style={{ fontSize:10, fontWeight:800, color:"#b0afa9", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                          <div style={{ fontSize:10, fontWeight:800, color:"var(--color-text-muted)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, color:"#1d1f3a", textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
-                          <div style={{ fontSize:13, color:"#76756f", marginTop:4 }}>{formatDate(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
+                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, color:"var(--color-text)", textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
+                          <div style={{ fontSize:13, color:"var(--color-text-secondary)", marginTop:4 }}>{formatDate(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
                         </div>
-                        <span style={{ background:cc+"18", color:cc, fontSize:10, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 10px", borderRadius:20, flex:"none" }}>{ev.category}</span>
-                        {att>0 && <span style={{ fontSize:13, color:"#b0afa9", flex:"none" }}>👥 {att}</span>}
+                        <span className="badge" style={{ background:cc+"18", color:cc, flex:"none" }}>{ev.category}</span>
+                        {att>0 && <span style={{ fontSize:13, color:"var(--color-text-muted)", flex:"none", display:"flex", alignItems:"center", gap:4 }}><Users size={13} strokeWidth={1.8} /> {att}</span>}
                       </div>
                     );
                   })}
@@ -2051,13 +2049,13 @@ export default function HHCEvents() {
                 <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#6a4c93", marginBottom:14 }}>Gearchiveerd ({archivedEvents.length})</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {archivedEvents.map(ev => (
-                    <div key={ev.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"3px solid #6a4c93", borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
+                    <div key={ev.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:"3px solid #6a4c93", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:15, fontWeight:700, textTransform:"uppercase" }}>{ev.title}</div>
-                        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)}</div>
+                        <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)}</div>
                       </div>
                       <button className="btn-sm" onClick={()=>handleArchive(ev)}>Herstellen</button>
-                      {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
+                      {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"var(--color-danger)" }}>Verwijderen</button>}
                     </div>
                   ))}
                 </div>
@@ -2066,17 +2064,17 @@ export default function HHCEvents() {
             {/* Nieuw #179: prullenbak -- zachtverwijderde events, te herstellen of definitief te wissen */}
             {canDelete && trashedEvents.length>0 && (
               <div style={{ marginTop:36 }}>
-                <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#e63946", marginBottom:6 }}>🗑 Prullenbak ({trashedEvents.length})</div>
-                <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:14 }}>Verwijderde events -- herstel ze of wis ze definitief.</div>
+                <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-danger)", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}><Trash2 size={14} strokeWidth={1.8} /> Prullenbak ({trashedEvents.length})</div>
+                <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginBottom:14 }}>Verwijderde events -- herstel ze of wis ze definitief.</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {trashedEvents.map(ev => (
-                    <div key={ev.id} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"3px solid #e63946", borderRadius:6, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
+                    <div key={ev.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:"3px solid var(--color-danger)", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:15, fontWeight:700, textTransform:"uppercase" }}>{ev.title}</div>
-                        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)} · verwijderd {formatDate(ev.deleted_at)}</div>
+                        <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{formatDate(ev.start_time)} · verwijderd {formatDate(ev.deleted_at)}</div>
                       </div>
                       <button className="btn-sm" onClick={()=>handleRestoreDeleted(ev.id)}>Herstellen</button>
-                      <button className="btn-sm" onClick={()=>handlePermanentDelete(ev.id)} style={{ color:"#e63946" }}>Definitief verwijderen</button>
+                      <button className="btn-sm" onClick={()=>handlePermanentDelete(ev.id)} style={{ color:"var(--color-danger)" }}>Definitief verwijderen</button>
                     </div>
                   ))}
                 </div>
