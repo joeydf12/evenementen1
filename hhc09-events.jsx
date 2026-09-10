@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin } from "lucide-react";
+import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin, Shirt, StickyNote } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -1822,21 +1822,21 @@ export default function HHCEvents() {
             return (
               <div key={b.id} className="ev-card" style={{ opacity:isPast?.5:1, cursor:"default" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                  <div style={{ background:cc, color:"#fff", borderRadius:8, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <div style={{ background:cc, color:"#fff", borderRadius:12, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{d.getDate()}</div>
                     <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
                       {isToday && <span className="badge" style={{ background:cc+"22", color:cc }}>Vandaag</span>}
-                      {b.time_label && <span style={{ fontSize:13, color:"#76756f" }}>🕐 {b.time_label}</span>}
+                      {b.time_label && <span style={{ fontSize:13, color:"var(--color-text-secondary)", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {b.time_label}</span>}
                     </div>
-                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1, color:"#1d1f3a" }}>{formatDate(b.shift_date)}</div>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1, color:"var(--color-text)" }}>{formatDate(b.shift_date)}</div>
                     <div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:8 }}>
                       {/* Nieuw #40: team-badge i.p.v. losse namen wanneer een team gekoppeld is */}
                       {team && (
-                        <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:team.color+"22", border:`1px solid ${team.color}55`, borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800, color:team.color, textTransform:"uppercase" }}>
-                          👕 {team.name}
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:team.color+"22", border:`1px solid ${team.color}55`, borderRadius:"var(--radius-pill)", padding:"4px 14px", fontSize:13, fontWeight:800, color:team.color, textTransform:"uppercase" }}>
+                          <Shirt size={14} strokeWidth={1.8} /> {team.name}
                         </span>
                       )}
                       {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i) => {
@@ -1845,21 +1845,21 @@ export default function HHCEvents() {
                         return (
                           <span key={i} onClick={canEdit?()=>toggleAttendance(b,n):undefined}
                             title={canEdit?(noShow?"Gemarkeerd als niet gekomen -- klik om te herstellen":"Klik om als 'niet gekomen' te markeren"):undefined}
-                            style={{ display:"inline-flex", alignItems:"center", gap:7, background:noShow?"#e6394611":cc+"14", border:`1px solid ${noShow?"#e6394655":cc+"33"}`, borderRadius:20, padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:noShow?"#e63946":"#1d1f3a", textDecoration:noShow?"line-through":"none", cursor:canEdit?"pointer":"default" }}>
-                            <span style={{ width:22, height:22, borderRadius:"50%", background:noShow?"#e63946":cc, color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{noShow?"✗":initials(n)}</span>
+                            style={{ display:"inline-flex", alignItems:"center", gap:7, background:noShow?"var(--color-danger)11":cc+"14", border:`1px solid ${noShow?"var(--color-danger)55":cc+"33"}`, borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:noShow?"var(--color-danger)":"var(--color-text)", textDecoration:noShow?"line-through":"none", cursor:canEdit?"pointer":"default" }}>
+                            <span style={{ width:22, height:22, borderRadius:"50%", background:noShow?"var(--color-danger)":cc, color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{noShow?"✗":initials(n)}</span>
                             {n}
                           </span>
                         );
                       })}
                     </div>
-                    {b.note && <div style={{ fontSize:14, color:"#76756f", marginTop:8, lineHeight:1.4 }}>📝 {b.note}</div>}
+                    {b.note && <div style={{ fontSize:14, color:"var(--color-text-secondary)", marginTop:8, lineHeight:1.4, display:"flex", alignItems:"flex-start", gap:6 }}><StickyNote size={14} strokeWidth={1.8} style={{ flexShrink:0, marginTop:2 }} /> {b.note}</div>}
                     {/* Nieuw #38: voorraad-checklist */}
                     {(b.checklist||[]).length>0 && (
-                      <div style={{ marginTop:10, background:"#f7f6f2", borderRadius:6, padding:"8px 12px" }}>
-                        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:"#76756f", marginBottom:6 }}>Checklist ({checkedCount}/{b.checklist.length})</div>
+                      <div style={{ marginTop:10, background:"var(--color-surface-muted)", borderRadius:10, padding:"8px 12px" }}>
+                        <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:"var(--color-text-secondary)", marginBottom:6 }}>Checklist ({checkedCount}/{b.checklist.length})</div>
                         <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                           {b.checklist.map((c,i) => (
-                            <label key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontFamily:"Barlow,sans-serif", cursor:canEdit?"pointer":"default", color:c.done?"#76756f":"#1d1f3a", textDecoration:c.done?"line-through":"none" }}>
+                            <label key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontFamily:"Barlow,sans-serif", cursor:canEdit?"pointer":"default", color:c.done?"var(--color-text-secondary)":"var(--color-text)", textDecoration:c.done?"line-through":"none" }}>
                               <input type="checkbox" checked={!!c.done} disabled={!canEdit} onChange={()=>toggleChecklistItem(b,i)} style={{ accentColor:cc }} />
                               {c.item}
                             </label>
@@ -1872,7 +1872,7 @@ export default function HHCEvents() {
                 {canEdit && (
                   <div style={{ marginTop:12, display:"flex", gap:6, flexWrap:"wrap" }}>
                     <button className="btn-sm" onClick={()=>openEditBardienst(b)}>Bewerken</button>
-                    {canDelete && <button className="btn-sm" onClick={()=>handleDeleteBardienst(b.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
+                    {canDelete && <button className="btn-sm" onClick={()=>handleDeleteBardienst(b.id)} style={{ color:"var(--color-danger)" }}>Verwijderen</button>}
                   </div>
                 )}
               </div>
@@ -1880,16 +1880,14 @@ export default function HHCEvents() {
           };
           return (
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:28, color:"#2E3192", textTransform:"uppercase" }}>Bardienstrooster</span>
-              <span style={{ background:"#2E3192", color:"#fff", fontSize:12, fontWeight:800, padding:"3px 12px", borderRadius:20 }}>{bardienst.length} diensten</span>
-              <div style={{ flex:1, height:3, background:"#F18C21", minWidth:20 }} />
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:20, flexWrap:"wrap" }}>
+              <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{bardienst.length} dienst{bardienst.length!==1?"en":""}</span>
               {canEdit && <button className="btn-red" onClick={openNewBardienst}>+ Bardienst toevoegen</button>}
             </div>
             {bardienst.length === 0 ? (
               <div style={{ textAlign:"center", padding:60 }}>
-                <div style={{ fontSize:48, marginBottom:16 }}>🍺</div>
-                <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen bardiensten ingepland</div>
+                <Beer size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen bardiensten ingepland</div>
                 {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNewBardienst}>Eerste bardienst toevoegen</button>}
               </div>
             ) : (
@@ -1900,34 +1898,33 @@ export default function HHCEvents() {
                   const daysLabel = days===0?"Vandaag":days===1?"Morgen":`${days} dagen`;
                   return (
                     <div style={{ marginBottom:30 }}>
-                      <div style={{ fontSize:12, fontWeight:800, letterSpacing:3, color:"#F18C21", textTransform:"uppercase", marginBottom:10 }}>❯❯ Eerstvolgende bardienst</div>
-                      <div style={{ position:"relative", background:"#F18C21", borderRadius:6, padding:"26px 28px", overflow:"hidden" }}>
-                        <div style={{ position:"absolute", top:0, bottom:0, right:0, width:200, background:"#2E3192", clipPath:"polygon(40% 0,100% 0,100% 100%,0 100%)" }} />
-                        <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
-                        <div style={{ position:"relative", display:"flex", alignItems:"center", gap:26, flexWrap:"wrap" }}>
-                          <div style={{ textAlign:"center", color:"#fff", flex:"none" }}>
-                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:64, lineHeight:.75 }}>{d.getDate()}</div>
-                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:20, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                      <div style={{ fontSize:12, fontWeight:800, letterSpacing:2, color:"var(--color-text-secondary)", textTransform:"uppercase", marginBottom:10 }}>Eerstvolgende bardienst</div>
+                      <div style={{ position:"relative", background:"var(--color-primary)", borderRadius:"var(--radius-card-featured)", padding:"22px 24px", overflow:"hidden" }}>
+                        <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff33 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
+                        <div style={{ position:"relative", display:"flex", alignItems:"center", gap:20, flexWrap:"wrap" }}>
+                          <div style={{ background:"#fff", borderRadius:10, width:54, padding:"6px 0", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:24, lineHeight:1, color:"var(--color-primary)" }}>{d.getDate()}</div>
+                            <div style={{ fontSize:9, fontWeight:800, color:"var(--color-text-secondary)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                           </div>
                           <div style={{ flex:1, minWidth:200 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, flexWrap:"wrap" }}>
-                              <span style={{ background:"#fff", color:"#F18C21", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>🍺 Bardienst</span>
+                              <span style={{ background:"var(--color-accent)", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><Beer size={12} strokeWidth={2} /> Bardienst</span>
                               <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:"#fff", textTransform:"uppercase" }}>{daysLabel}</span>
                             </div>
-                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:32, lineHeight:1, color:"#fff", textTransform:"uppercase" }}>{formatDate(nextShift.shift_date)}</div>
-                            <div style={{ fontSize:15, color:"#ffe4c2", marginTop:8 }}>{nextShift.time_label || "Tijd volgt"}</div>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:26, lineHeight:1.05, color:"#fff", textTransform:"uppercase" }}>{formatDate(nextShift.shift_date)}</div>
+                            <div style={{ fontSize:14, color:"#c9cbef", marginTop:6 }}>{nextShift.time_label || "Tijd volgt"}</div>
                             <div style={{ marginTop:12, display:"flex", flexWrap:"wrap", gap:8 }}>
                               {nextShift.team_id && (() => { const t = teams.find(x=>x.id===nextShift.team_id); return t ? (
-                                <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800, color:"#fff", textTransform:"uppercase" }}>👕 {t.name}</span>
+                                <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:"var(--radius-pill)", padding:"4px 14px", fontSize:13, fontWeight:800, color:"#fff", textTransform:"uppercase" }}><Shirt size={14} strokeWidth={1.8} /> {t.name}</span>
                               ) : null; })()}
                               {nextShift.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
-                                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:20, padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#fff" }}>
-                                  <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:"#F18C21", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
+                                <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#fff" }}>
+                                  <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:"var(--color-primary)", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
                                   {n}
                                 </span>
                               ))}
                             </div>
-                            {nextShift.note && <div style={{ fontSize:13, color:"#ffe4c2", marginTop:10 }}>📝 {nextShift.note}</div>}
+                            {nextShift.note && <div style={{ fontSize:13, color:"#c9cbef", marginTop:10, display:"flex", alignItems:"flex-start", gap:6 }}><StickyNote size={13} strokeWidth={1.8} style={{ flexShrink:0, marginTop:2 }} /> {nextShift.note}</div>}
                           </div>
                         </div>
                       </div>
@@ -1938,9 +1935,9 @@ export default function HHCEvents() {
                 {Object.entries(groupsMap).map(([month, shifts]) => (
                   <div key={month} style={{ marginBottom:30 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-                      <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:22, textTransform:"uppercase", color:"#2E3192" }}>{month}</span>
-                      <div style={{ flex:1, height:3, background:"#F18C21" }} />
-                      <span style={{ fontSize:12, fontWeight:700, color:"#b0afa9", textTransform:"uppercase" }}>{shifts.length} dienst{shifts.length!==1?"en":""}</span>
+                      <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:22, textTransform:"uppercase", color:"var(--color-primary)" }}>{month}</span>
+                      <div style={{ flex:1, height:3, background:"var(--color-accent)" }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:"var(--color-text-muted)", textTransform:"uppercase" }}>{shifts.length} dienst{shifts.length!==1?"en":""}</span>
                     </div>
                     <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                       {shifts.map(b => shiftRow(b, "#2E3192"))}
