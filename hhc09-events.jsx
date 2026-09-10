@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings } from "lucide-react";
+import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -1606,14 +1606,14 @@ export default function HHCEvents() {
       {tab==="agenda" && (
       <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"16px 20px 0" }}>
         <button className="filter-toggle" onClick={()=>setShowMobileFilters(v=>!v)}>
-          <span>🔍 Filter{activeFilters?" (actief)":""}</span>
+          <span style={{ display:"flex", alignItems:"center", gap:8 }}><SlidersHorizontal size={16} strokeWidth={1.8} /> Filter{activeFilters?" (actief)":""}</span>
           <span>{showMobileFilters?"▲":"▼"}</span>
         </button>
         <div className={`filter-bar-content ${showMobileFilters?"expanded":""}`}>
         <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap" }}>
           <div style={{ position:"relative", flex:1, minWidth:200 }}>
-            <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#56554d", pointerEvents:"none" }}>🔍</span>
-            <input className="input" value={searchInput} onChange={e=>setSearchInput(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:38, borderRadius:24 }} />
+            <Search size={16} strokeWidth={1.8} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-muted)", pointerEvents:"none" }} />
+            <input className="input" value={searchInput} onChange={e=>setSearchInput(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:40, borderRadius:"var(--radius-pill)" }} />
           </div>
           <input className="input" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ width:150 }} title="Vanaf datum" />
           <input className="input" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ width:150 }} title="Tot datum" />
@@ -1621,18 +1621,18 @@ export default function HHCEvents() {
             <option>Alles</option>
             {allLocations.map(l=><option key={l}>{l}</option>)}
           </select>
-          {activeFilters && <button className="btn-sm" onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); }}>✕ Reset</button>}
+          {activeFilters && <button className="btn-sm" onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); }} style={{ display:"flex", alignItems:"center", gap:5 }}><X size={13} strokeWidth={2} /> Reset</button>}
         </div>
         <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
           {["Alles",...allCategories].map(cat=>(
             <button key={cat} className={`filter-btn ${filter===cat?"active":""}`} style={{ "--fc":cat==="Alles"?primaryColor:(categoryColors[cat]||primaryColor) }} onClick={()=>setFilter(cat)}>{cat}</button>
           ))}
           <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
-            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>
-              <input type="checkbox" checked={showPast} onChange={e=>setShowPast(e.target.checked)} style={{ accentColor:primaryColor }} />
+            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>
+              <input type="checkbox" checked={showPast} onChange={e=>setShowPast(e.target.checked)} style={{ accentColor:"var(--color-accent)" }} />
               Toon verleden
             </label>
-            <button className="btn-sm no-print" onClick={()=>window.print()}>🖨 Afdrukken</button>
+            <button className="btn-sm no-print" onClick={()=>window.print()} style={{ display:"flex", alignItems:"center", gap:5 }}><Printer size={13} strokeWidth={1.8} /> Afdrukken</button>
           </div>
         </div>
         </div>
@@ -1654,7 +1654,7 @@ export default function HHCEvents() {
                 <option value="" disabled>Verplaats naar categorie…</option>
                 {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              <button className="btn-sm" onClick={()=>setSelectedEventIds(new Set())} style={{ marginLeft:"auto" }}>✕ Selectie wissen</button>
+              <button className="btn-sm" onClick={()=>setSelectedEventIds(new Set())} style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:5 }}><X size={13} strokeWidth={2} /> Selectie wissen</button>
             </div>
           )}
           {loading
@@ -1662,12 +1662,12 @@ export default function HHCEvents() {
             : visibleEvents.length===0
               ? (
                 <div style={{ textAlign:"center", padding:60 }}>
-                  <div style={{ fontSize:48, marginBottom:16 }}>📅</div>
-                  <div style={{ color:"#56554d", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Geen evenementen gevonden</div>
+                  <CalendarDays size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                  <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Geen evenementen gevonden</div>
                   {activeFilters && (
                     <>
-                      <div style={{ color:"#76756f", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Niets gevonden met de huidige filters</div>
-                      <button className="btn-sm" style={{ marginTop:14 }} onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); setFilter("Alles"); }}>✕ Filters wissen</button>
+                      <div style={{ color:"var(--color-text-secondary)", fontSize:13, fontFamily:"Barlow,sans-serif", marginTop:8 }}>Niets gevonden met de huidige filters</div>
+                      <button className="btn-sm" style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:5 }} onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); setFilter("Alles"); }}><X size={13} strokeWidth={2} /> Filters wissen</button>
                     </>
                   )}
                   {canEdit && <button className="btn-red" style={{ marginTop:20 }} onClick={openNew}>Eerste evenement toevoegen</button>}
@@ -1703,9 +1703,9 @@ export default function HHCEvents() {
                           )}
                           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
                             {canEdit && (
-                              <input type="checkbox" checked={selectedEventIds.has(ev.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleEventSelected(ev.id)} style={{ width:18, height:18, accentColor:primaryColor, flexShrink:0, cursor:"pointer" }} title="Selecteren voor bulkactie" />
+                              <input type="checkbox" checked={selectedEventIds.has(ev.id)} onClick={e=>e.stopPropagation()} onChange={()=>toggleEventSelected(ev.id)} style={{ width:18, height:18, accentColor:"var(--color-accent)", flexShrink:0, cursor:"pointer" }} title="Selecteren voor bulkactie" />
                             )}
-                            <div style={{ background:cc, color:"#fff", borderRadius:8, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <div style={{ background:cc, color:"#fff", borderRadius:12, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                               <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{new Date(ev.start_time).getDate()}</div>
                               <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{new Date(ev.start_time).toLocaleDateString("nl-NL",{month:"short"})}</div>
                             </div>
@@ -1713,20 +1713,20 @@ export default function HHCEvents() {
                               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
                                 <span className="badge" style={{ background:cc+"22", color:cc }}>{ev.category}</span>
                                 {ev.hidden && <span className="badge" style={{ background:"#76756f22", color:"#76756f" }}>Verborgen</span>}
-                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:primaryColor+"14", color:primaryColor }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
-                                {ev.cost > 0 && <span style={{ fontSize:11, color:"#52b788", fontFamily:"Barlow,sans-serif" }}>💶 €{Number(ev.cost).toFixed(2)}</span>}
-                                {ev.sponsor_name && <span style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>🤝 {ev.sponsor_name}</span>}
+                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:"var(--color-accent)22", color:"var(--color-accent-hover)" }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
+                                {ev.cost > 0 && <span style={{ fontSize:11, color:"var(--color-success)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:3 }}><Euro size={11} strokeWidth={2} /> {Number(ev.cost).toFixed(2)}</span>}
+                                {ev.sponsor_name && <span style={{ fontSize:11, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>🤝 {ev.sponsor_name}</span>}
                               </div>
                               <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
-                              {ev.description && <div style={{ fontSize:14, color:"#76756f", marginTop:4, fontFamily:"Barlow,sans-serif", lineHeight:1.4 }}>{ev.description.length>100?ev.description.slice(0,100)+"…":ev.description}</div>}
-                              <div style={{ marginTop:8, display:"flex", gap:12, flexWrap:"wrap" }}>
-                                <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>🕐 {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>
-                                {ev.location && <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>📍 {ev.location}</span>}
-                                <span style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>👥 {(attendees[ev.id]||[]).length} aangemeld</span>
+                              {ev.description && <div style={{ fontSize:14, color:"var(--color-text-secondary)", marginTop:4, fontFamily:"Barlow,sans-serif", lineHeight:1.4 }}>{ev.description.length>100?ev.description.slice(0,100)+"…":ev.description}</div>}
+                              <div style={{ marginTop:8, display:"flex", gap:14, flexWrap:"wrap" }}>
+                                <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>
+                                {ev.location && <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><MapPin size={13} strokeWidth={1.8} /> {ev.location}</span>}
+                                <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><Users size={13} strokeWidth={1.8} /> {(attendees[ev.id]||[]).length} aangemeld</span>
                               </div>
                               {ev.sponsor_logo && <img src={ev.sponsor_logo} alt={ev.sponsor_name} style={{ height:24, marginTop:8, objectFit:"contain" }} onError={e=>e.target.style.display="none"} />}
                             </div>
-                            <span style={{ fontSize:22, color:"#c2bfb2", flexShrink:0 }}>›</span>
+                            <ChevronRight size={20} strokeWidth={1.8} style={{ color:"var(--color-text-muted)", flexShrink:0 }} />
                           </div>
                           {canEdit && (
                             <div style={{ marginTop:12, display:"flex", gap:6, flexWrap:"wrap" }} onClick={e=>e.stopPropagation()}>
