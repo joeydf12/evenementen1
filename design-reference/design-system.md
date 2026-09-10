@@ -1,6 +1,6 @@
 # HHC'09 Clubagenda — Design System V2
 
-Status: **Fase 2 (componenten) + Fase 3 (Agenda-pagina) gebouwd.**
+Status: **Fase 2 (componenten) + Fase 3 (Agenda-pagina) + Fase 4 (Event detail) gebouwd.**
 Referentiebeelden: [`hhc09-nieuw-design-mockup.png`](./hhc09-nieuw-design-mockup.png) (stijlreferentie, niet content).
 
 ---
