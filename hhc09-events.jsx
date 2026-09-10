@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin, Shirt, StickyNote, Trash2 } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
+import homeHeroPlaceholder from "./images/home-hero-placeholder.svg";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -1426,43 +1427,75 @@ export default function HHCEvents() {
 
       {/* Header */}
       <header className="no-print" style={{ background:"#f3f1ea", borderBottom:"1px solid #ebe8df" }}>
-        <div style={{ maxWidth:960, margin:"0 auto", padding:"18px 20px 16px" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-              <img
-                src={clubSettings.logo || clubLogo}
-                alt="logo"
-                style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"1px solid #ebe8df" }}
-                onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
-              />
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#2E3192", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
-                <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
+        {tab==="home" ? (
+          <div style={{ position:"relative", height:150, overflow:"hidden" }}>
+            <img src={homeHeroPlaceholder} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(15,20,35,.25), rgba(15,20,35,.65))" }} />
+            <span style={{ position:"absolute", right:-10, bottom:-24, fontSize:110, opacity:.14, lineHeight:1 }}>⚽</span>
+            <div style={{ position:"relative", maxWidth:960, margin:"0 auto", padding:"16px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+                <img
+                  src={clubSettings.logo || clubLogo}
+                  alt="logo"
+                  style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"2px solid #ffffffcc" }}
+                  onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
+                />
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#fff", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
+                  <div style={{ fontSize:11, color:"#ffffffcc", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
+                </div>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                <button onClick={()=>setTab("agenda")} aria-label="Zoeken" style={{ background:"#ffffff33", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><Search size={16} strokeWidth={1.8} /></button>
+                <button
+                  onClick={()=>{ if (adminMode && canSettings) setShowSettings(true); else if (!adminMode) { setShowPinModal(true); setPinInput(""); setPinError(false); } }}
+                  aria-label="Instellingen"
+                  style={{ background:"#ffffff33", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
+                ><Settings size={16} strokeWidth={1.8} /></button>
               </div>
             </div>
-            <div className="admin-corner">
-              {adminMode ? (
-                <>
-                  <span style={{ fontSize:11, color:"#2E3192", background:"#2E319214", padding:"3px 10px", borderRadius:999, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
-                  {canEdit && <button className="btn-red" onClick={openNew} style={{ fontSize:13, padding:"9px 16px" }}>+ Nieuw</button>}
-                  {canSettings && <button className="btn-ghost-onbrand" onClick={()=>setShowSettings(true)} style={{ padding:9, display:"flex" }} aria-label="Instellingen"><Settings size={17} strokeWidth={1.8} /></button>}
-                  <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
-                </>
-              ) : (
-                <button className="btn-ghost-onbrand" onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} style={{ padding:9, display:"flex" }} aria-label="Beheer"><Settings size={17} strokeWidth={1.8} /></button>
-              )}
-            </div>
           </div>
-
-          {tab!=="home" && TAB_HEADERS[tab] && (
-            <div style={{ marginTop:20 }}>
-              <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,38px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>{TAB_HEADERS[tab].title}</h1>
-              <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{TAB_HEADERS[tab].subtitle}</div>
+        ) : (
+          <div style={{ maxWidth:960, margin:"0 auto", padding:"18px 20px 16px" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+                <img
+                  src={clubSettings.logo || clubLogo}
+                  alt="logo"
+                  style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"1px solid #ebe8df" }}
+                  onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
+                />
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#2E3192", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
+                  <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
+                </div>
+              </div>
+              <div className="admin-corner">
+                {adminMode ? (
+                  <>
+                    <span style={{ fontSize:11, color:"#2E3192", background:"#2E319214", padding:"3px 10px", borderRadius:999, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
+                    {canEdit && <button className="btn-red" onClick={openNew} style={{ fontSize:13, padding:"9px 16px" }}>+ Nieuw</button>}
+                    {canSettings && <button className="btn-ghost-onbrand" onClick={()=>setShowSettings(true)} style={{ padding:9, display:"flex" }} aria-label="Instellingen"><Settings size={17} strokeWidth={1.8} /></button>}
+                    <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
+                  </>
+                ) : (
+                  <button className="btn-ghost-onbrand" onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} style={{ padding:9, display:"flex" }} aria-label="Beheer"><Settings size={17} strokeWidth={1.8} /></button>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Desktop pill tabs, attached to the header */}
-          <div className="desktop-tabs" style={{ display:"flex", gap:8, overflowX:"auto", marginTop:20, paddingBottom:2 }}>
+            {TAB_HEADERS[tab] && (
+              <div style={{ marginTop:20 }}>
+                <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,38px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>{TAB_HEADERS[tab].title}</h1>
+                <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{TAB_HEADERS[tab].subtitle}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Desktop pill tabs, attached to the header */}
+        <div style={{ maxWidth:960, margin:"0 auto", padding:"0 20px" }}>
+          <div className="desktop-tabs" style={{ display:"flex", gap:8, overflowX:"auto", marginTop:tab==="home"?12:20, paddingBottom:2 }}>
             {tabList.map(t => (
               <button key={t.id} className={`pill-tab ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>
             ))}
@@ -1530,7 +1563,7 @@ export default function HHCEvents() {
                       <div style={{ fontSize:12, color:"#c9cbef", marginTop:2 }}>👥 {(attendees[ev.id]||[]).length} aangemeld</div>
                     </div>
                   </div>
-                  <button className="btn-red" style={{ background:"#F18C21", marginTop:18, width:"100%" }} onClick={e=>{ e.stopPropagation(); setShowAttendees(ev); }}>Ik kom!</button>
+                  <button className="btn-red" style={{ marginTop:18, width:"100%" }} onClick={e=>{ e.stopPropagation(); setSelectedEvent(ev); }}>Openen</button>
                 </div>
               </div>
             );
