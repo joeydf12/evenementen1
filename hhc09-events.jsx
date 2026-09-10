@@ -2315,28 +2315,29 @@ export default function HHCEvents() {
 
       {/* FORM MODAL */}
       {showForm && (
-        <div className="modal-overlay" onClick={closeForm}>
-          <div className="modal" style={{ maxWidth:640 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
-            <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20 }}>{editingEvent?"Bewerken":"Nieuw evenement"}</h2>
+        <div className="modal-overlay sheet-mode" onClick={closeForm}>
+          <div className="modal sheet-mode" style={{ maxWidth:640 }} onClick={e=>e.stopPropagation()} onFocusCapture={handleModalFocus}>
+            <div className="modal-drag-handle" />
+            <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:20, color:"var(--color-text)" }}>{editingEvent?"Bewerken":"Nieuw evenement"}</h2>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
+              <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label><input className="input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label><input className="input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label><input className="input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label><input className="input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
               </div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Categorie</label>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Categorie</label>
                   <select className="input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
                     {allCategories.map(c=><option key={c}>{c}</option>)}
                   </select>
                 </div>
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Locatie</label><input className="input" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="Sportpark De Brug" /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Locatie</label><input className="input" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="Sportpark De Brug" /></div>
               </div>
-              <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Beschrijving</label><textarea className="input" rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Extra info..." style={{ resize:"vertical" }} /></div>
+              <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Beschrijving</label><textarea className="input" rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Extra info..." style={{ resize:"vertical" }} /></div>
 
               {/* Nieuw #3: eventreeksen/toernooien */}
               <div>
-                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Onderdeel van reeks</label>
+                <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Onderdeel van reeks</label>
                 <div style={{ display:"flex", gap:8 }}>
                   <select className="input" value={form.series_id} onChange={e=>setForm(f=>({...f,series_id:e.target.value}))} style={{ flex:1 }}>
                     <option value="">Geen reeks</option>
@@ -2352,7 +2353,7 @@ export default function HHCEvents() {
               {/* Nieuw #1: terugkerende events -- alleen bij het aanmaken van een nieuw event */}
               {!editingEvent && (
                 <div>
-                  <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Herhaling</label>
+                  <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Herhaling</label>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                     <select className="input" value={recurrence.freq} onChange={e=>setRecurrence(r=>({...r,freq:e.target.value}))} style={{ width:"auto" }}>
                       <option value="none">Nooit (eenmalig)</option>
@@ -2366,22 +2367,22 @@ export default function HHCEvents() {
                       </>
                     )}
                   </div>
-                  {recurrence.freq!=="none" && <div style={{ fontSize:12, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>Maakt losse events aan tot de einddatum of het maximum, wat eerder komt.</div>}
+                  {recurrence.freq!=="none" && <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:6 }}>Maakt losse events aan tot de einddatum of het maximum, wat eerder komt.</div>}
                 </div>
               )}
               <div>
-                <label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
+                <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
                 <input className="input" value={form.image_url} onChange={e=>setForm(f=>({...f,image_url:e.target.value}))} placeholder="https://... (banner/foto)" />
-                {form.image_url && <img src={form.image_url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:6, border:"1px solid #e7e4da", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
+                {form.image_url && <img src={form.image_url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:10, border:"1px solid var(--color-border)", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
               </div>
               <div className="grid-3">
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Kosten (€)</label><input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e=>setForm(f=>({...f,cost:e.target.value}))} placeholder="0.00" /></div>
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsornaam</label><input className="input" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))} placeholder="Bakkerij Jansen" /></div>
-                <div><label style={{ fontSize:11, color:"#76756f", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label><input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Kosten (€)</label><input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e=>setForm(f=>({...f,cost:e.target.value}))} placeholder="0.00" /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsornaam</label><input className="input" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))} placeholder="Bakkerij Jansen" /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label><input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." /></div>
               </div>
               <div style={{ display:"flex", gap:16, alignItems:"center" }}>
-                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.is_public} onChange={e=>setForm(f=>({...f,is_public:e.target.checked}))} style={{ accentColor:primaryColor }} /> Publiek</label>
-                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.hidden} onChange={e=>setForm(f=>({...f,hidden:e.target.checked}))} style={{ accentColor:"#76756f" }} /> Verborgen</label>
+                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.is_public} onChange={e=>setForm(f=>({...f,is_public:e.target.checked}))} style={{ accentColor:"var(--color-accent)" }} /> Publiek</label>
+                <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.hidden} onChange={e=>setForm(f=>({...f,hidden:e.target.checked}))} style={{ accentColor:"var(--color-text-muted)" }} /> Verborgen</label>
               </div>
               <div className="modal-actions-sticky" style={{ display:"flex", gap:10 }}>
                 <button className="btn-red" onClick={handleSave} disabled={saving||!form.title||!form.start_time} style={{ flex:1 }}>{saving?"Opslaan...":editingEvent?"Opslaan":"Toevoegen"}</button>
