@@ -1,678 +1,30 @@
 import { useState, useEffect, useRef } from "react";
-import { Home, CalendarDays, Newspaper, Beer, CalendarRange, Archive, BarChart3, LayoutDashboard, Lightbulb, MoreHorizontal, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, CalendarPlus, QrCode, Megaphone, Pin, Shirt, StickyNote, Trash2 } from "lucide-react";
+import { Home, CalendarDays, Beer, Archive, Lightbulb, Settings, Search, SlidersHorizontal, X, Printer, Clock, MapPin, Users, Euro, ChevronRight, Repeat, Trophy, Megaphone, Pin, Shirt, StickyNote, Trash2, CheckCircle2 } from "lucide-react";
 import clubLogo from "./images/logohhc.jpg";
+import headerBanner from "./images/header-banner.png";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { loadLS, saveLS } from "./lib/storage.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, sb, adminApi, getStoredSession } from "./lib/supabase.js";
+import {
+  MONTHS_NL, DAYS_NL, formatDate, formatTime, isTimeSet, isMultiDay, dayInRange, formatRange, formatRangeCompact,
+  toDatetimeLocalStr, localToUtcIso, computeRecurrenceStarts, isUpcoming, daysUntil, toDateStr,
+  getNextThursday, getWeekStart, getCalendarDays,
+} from "./lib/dates.js";
+import { isDirty, contrastWithWhite, handleModalFocus, downloadICS, resizeImageToBase64 } from "./lib/utils.js";
+
+import NavIcon from "./components/NavIcon.jsx";
+import SkeletonCard from "./components/SkeletonCard.jsx";
+import QRModal from "./components/QRModal.jsx";
+import AttendeeModal from "./components/AttendeeModal.jsx";
+import WeatherWidget from "./components/WeatherWidget.jsx";
+import AdminDashboard from "./components/AdminDashboard.jsx";
+import { PhotoLibraryGrid, PhotoPickerModal } from "./components/PhotoLibrary.jsx";
+import { WeekView, YearView } from "./components/CalendarViews.jsx";
 
 const BASE_CATEGORIES = ["Evenement", "Vergadering", "Overig"];
 const DEFAULT_COLORS = { Evenement:"#F18C21", Vergadering:"#2E3192", Overig:"#2FA8D8" };
-const MONTHS_NL = ["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"];
-const DAYS_NL = ["Ma","Di","Wo","Do","Vr","Za","Zo"];
 const ROLE_LABELS = { viewer:"Bekijker", editor:"Redacteur", super:"Beheerder" };
 const DEFAULT_CHECKLIST_ITEMS = ["Bier/frisdrank aangevuld", "Kleingeld/kassa gecontroleerd", "Voorraad koffie/thee", "Afsluiten & apparatuur uit"]; // nieuw #38
-
-// `prefer` defaults to "return=representation" (ask PostgREST to hand back the
-// row). For tables that are insert-only for anon with no SELECT policy (like
-// "ideas" -- intentionally unreadable by the public key), RETURNING also gets
-// checked against the SELECT policy, so it fails RLS even though the INSERT
-// itself is allowed. Pass "return=minimal" for those.
-async function sb(endpoint, method = "GET", body = null, prefer = "return=representation") {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
-    method,
-    headers: { apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}`, "Content-Type":"application/json", Prefer:prefer },
-    ...(body ? { body:JSON.stringify(body) } : {}),
-  });
-  if (!res.ok) return [];
-  try { return await res.json(); } catch { return []; }
-}
-
-// Admin writes go through the "admin" Edge Function, which checks the pincode
-// server-side and uses the service-role key — the anon key alone can no longer
-// write to events/bardienst (see RLS policies), so a stolen anon key is useless.
-async function adminApi(body) {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin`, {
-      method: "POST",
-      headers: { apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}`, "Content-Type":"application/json" },
-      body: JSON.stringify(body),
-    });
-    let data = null;
-    try { data = await res.json(); } catch {}
-    return { ok: res.ok, status: res.status, data };
-  } catch {
-    return { ok:false, status:0, data:{ error:"Netwerkfout" } };
-  }
-}
-
-function getStoredSession() {
-  const s = loadLS("hhc09_admin_session", null);
-  if (s && s.token && s.role && s.expires_at && new Date(s.expires_at) > new Date()) return s;
-  return null;
-}
-
-function loadLS(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
-function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
-
-// Verbetering #6/#21: vergelijkt een formulierstate met de staat bij het openen,
-// om te kunnen waarschuwen voor niet-opgeslagen wijzigingen bij het sluiten.
-function isDirty(current, initial) {
-  if (!initial) return false;
-  return JSON.stringify(current) !== JSON.stringify(initial);
-}
-
-// Verbetering #23: contrast van een categoriekleur tegen witte tekst (WCAG-formule),
-// zodat een te lichte kleur in de instellingen gesignaleerd kan worden.
-function hexToRgb(hex) {
-  const h = (hex || "").replace("#", "").trim();
-  const full = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
-  if (!/^[0-9a-f]{6}$/i.test(full)) return null;
-  const num = parseInt(full, 16);
-  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
-}
-function relLuminance([r, g, b]) {
-  const [R, G, B] = [r, g, b].map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); });
-  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-}
-function contrastWithWhite(hex) {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return 21;
-  return 1.05 / (relLuminance(rgb) + 0.05);
-}
-
-// Verbetering #34: houdt een net gefocust veld in een modal zichtbaar boven het
-// (mobiele) toetsenbord, i.p.v. dat de gebruiker zelf moet scrollen.
-function handleModalFocus(e) {
-  const t = e.target;
-  if (t && t.matches && t.matches("input,textarea,select")) {
-    setTimeout(() => t.scrollIntoView({ block:"center", behavior:"smooth" }), 60);
-  }
-}
-
-function formatDate(dt) { if (!dt) return ""; return new Date(dt).toLocaleDateString("nl-NL", { weekday:"long", day:"numeric", month:"long" }); }
-function formatTime(dt) { if (!dt) return ""; return new Date(dt).toLocaleTimeString("nl-NL", { hour:"2-digit", minute:"2-digit" }); }
-
-// Nieuw #2: meerdaagse evenementen -- valt "dag" (middernacht) binnen [start,end], op datum vergeleken (niet op tijd)?
-function isMultiDay(ev) { return ev.end_time && toDateStr(new Date(ev.start_time)) !== toDateStr(new Date(ev.end_time)); }
-function dayInRange(day, startTime, endTime) {
-  const d = toDateStr(day);
-  const s = toDateStr(new Date(startTime));
-  const e = endTime ? toDateStr(new Date(endTime)) : s;
-  return d >= s && d <= e;
-}
-function formatRange(startTime, endTime) {
-  if (!isMultiDay({ start_time:startTime, end_time:endTime })) return formatDate(startTime);
-  return `${formatDate(startTime)} t/m ${formatDate(endTime)}`;
-}
-
-// Nieuw #1: terugkerende events. De datetime-local velden ("YYYY-MM-DDTHH:mm") worden
-// door de rest van de app als lokale, naïeve strings behandeld (zie openEdit: ev.start_time.slice(0,16)) --
-// deze helpers rekenen in diezelfde vorm, zodat gegenereerde occurrences zich identiek gedragen
-// aan een handmatig aangemaakt event.
-function toDatetimeLocalStr(d) {
-  const p = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-function computeRecurrenceStarts(startLocalStr, freq, until, count) {
-  const first = new Date(startLocalStr);
-  const untilDate = until ? new Date(until + "T23:59:59") : null;
-  const maxCount = Math.min(count ? parseInt(count, 10) : 52, 104); // hard veiligheidsplafond
-  const out = [first];
-  for (let i = 1; i < maxCount; i++) {
-    const d = new Date(startLocalStr);
-    if (freq === "weekly") d.setDate(d.getDate() + 7 * i);
-    else if (freq === "monthly") d.setMonth(d.getMonth() + i);
-    else break;
-    if (untilDate && d > untilDate) break;
-    out.push(d);
-  }
-  return out;
-}
-function isUpcoming(dt) { return new Date(dt) >= new Date(); }
-function daysUntil(dt) { return Math.ceil((new Date(dt) - new Date()) / 86400000); }
-
-// Lokale datum als "YYYY-MM-DD" -- toISOString() zou hier verkeerd zijn: die
-// converteert naar UTC en schuift de datum een dag terug in NL-tijdzones (UTC+1/+2).
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getNextThursday() {
-  const d = new Date(); d.setHours(0, 0, 0, 0);
-  const diff = (4 - d.getDay() + 7) % 7; // 4 = donderdag
-  d.setDate(d.getDate() + diff);
-  return toDateStr(d);
-}
-
-function getUpcomingThursdays(n) {
-  const start = new Date(getNextThursday() + "T00:00:00"); // lokale tijd, geen UTC-parse
-  const list = [];
-  for (let i = 0; i < n; i++) {
-    const d = new Date(start); d.setDate(d.getDate() + i * 7);
-    list.push(toDateStr(d));
-  }
-  return list;
-}
-
-const WMO_WEATHER = {
-  0:{icon:"☀️",label:"Helder"}, 1:{icon:"🌤️",label:"Vrijwel onbewolkt"}, 2:{icon:"⛅",label:"Half bewolkt"}, 3:{icon:"☁️",label:"Bewolkt"},
-  45:{icon:"🌫️",label:"Mist"}, 48:{icon:"🌫️",label:"Mist"},
-  51:{icon:"🌦️",label:"Lichte motregen"}, 53:{icon:"🌦️",label:"Motregen"}, 55:{icon:"🌦️",label:"Zware motregen"},
-  56:{icon:"🌧️",label:"Lichte ijzel"}, 57:{icon:"🌧️",label:"Ijzel"},
-  61:{icon:"🌧️",label:"Lichte regen"}, 63:{icon:"🌧️",label:"Regen"}, 65:{icon:"🌧️",label:"Zware regen"},
-  66:{icon:"🌧️",label:"IJzel"}, 67:{icon:"🌧️",label:"Zware ijzel"},
-  71:{icon:"❄️",label:"Lichte sneeuw"}, 73:{icon:"❄️",label:"Sneeuw"}, 75:{icon:"❄️",label:"Zware sneeuw"}, 77:{icon:"❄️",label:"Sneeuwkorrels"},
-  80:{icon:"🌧️",label:"Lichte regenbui"}, 81:{icon:"🌧️",label:"Regenbui"}, 82:{icon:"🌧️",label:"Zware regenbui"},
-  85:{icon:"❄️",label:"Lichte sneeuwbui"}, 86:{icon:"❄️",label:"Sneeuwbui"},
-  95:{icon:"⛈️",label:"Onweer"}, 96:{icon:"⛈️",label:"Onweer met hagel"}, 99:{icon:"⛈️",label:"Zwaar onweer"},
-};
-function getWeatherInfo(code) { return WMO_WEATHER[code] || { icon:"🌡️", label:"Onbekend" }; }
-
-function getGoogleCalendarUrl(ev) {
-  const fmt = d => new Date(d).toISOString().replace(/[-:]/g,"").slice(0,15) + "Z";
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${fmt(ev.start_time)}/${fmt(ev.end_time||ev.start_time)}&details=${encodeURIComponent(ev.description||"")}&location=${encodeURIComponent(ev.location||"")}`;
-}
-
-function getWeekStart(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  d.setHours(0,0,0,0);
-  return d;
-}
-
-function getCalendarDays(year, month) {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  let startDay = first.getDay(); if (startDay === 0) startDay = 7;
-  const days = [];
-  for (let i = 1; i < startDay; i++) days.push(null);
-  for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d));
-  return days;
-}
-
-function generateICS(event) {
-  const fmt = d => new Date(d).toISOString().replace(/[-:]/g,"").slice(0,15) + "Z";
-  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//HHC09//Events//NL","BEGIN:VEVENT",
-    `UID:${event.id}@hhc09.nl`,`DTSTART:${fmt(event.start_time)}`,`DTEND:${fmt(event.end_time||event.start_time)}`,
-    `SUMMARY:${event.title}`,`DESCRIPTION:${(event.description||"").replace(/\n/g,"\\n")}`,`LOCATION:${event.location||""}`,
-    "END:VEVENT","END:VCALENDAR"].join("\r\n");
-}
-
-function downloadICS(event) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([generateICS(event)], { type:"text/calendar" }));
-  a.download = `${event.title.replace(/\s+/g,"-")}.ics`;
-  a.click(); URL.revokeObjectURL(a.href);
-}
-
-// ---- NAV ICON (Lucide, outline, monochroom voor de navigatie) ----
-const NAV_ICONS = {
-  home: Home,
-  agenda: CalendarDays,
-  nieuws: Newspaper,
-  bardienst: Beer,
-  kalender: CalendarRange,
-  archief: Archive,
-  statistieken: BarChart3,
-  dashboard: LayoutDashboard,
-  idee: Lightbulb,
-  ideeen: Lightbulb,
-  meer: MoreHorizontal,
-};
-function NavIcon({ name, size = 20 }) {
-  const Icon = NAV_ICONS[name];
-  if (!Icon) return null;
-  return <Icon size={size} strokeWidth={1.8} />;
-}
-
-// ---- SKELETON CARD ----
-function SkeletonCard({ delay = 0 }) {
-  return (
-    <div style={{ background:"#ffffff", border:"1px solid #ebe8df", borderLeft:"4px solid #ebe8df", borderRadius:8, padding:"18px 20px", position:"relative", overflow:"hidden", animationDelay:`${delay}s` }}>
-      <div style={{ position:"absolute", inset:0, background:"linear-gradient(90deg,transparent 0%,#00000010 50%,transparent 100%)", animation:"shimmer 1.6s infinite" }} />
-      <div style={{ display:"flex", justifyContent:"space-between", gap:16 }}>
-        <div style={{ flex:1 }}>
-          <div style={{ height:12, background:"#ebe8df", borderRadius:3, width:"25%", marginBottom:10 }} />
-          <div style={{ height:20, background:"#ebe8df", borderRadius:3, width:"55%", marginBottom:8 }} />
-          <div style={{ height:13, background:"#ebe8df", borderRadius:3, width:"75%", marginBottom:6 }} />
-          <div style={{ height:13, background:"#ebe8df", borderRadius:3, width:"45%" }} />
-        </div>
-        <div style={{ width:52, height:52, background:"#ebe8df", borderRadius:6, flexShrink:0 }} />
-      </div>
-    </div>
-  );
-}
-
-// ---- QR MODAL ----
-function QRModal({ event, onClose, primaryColor }) {
-  const url = encodeURIComponent(`${window.location.origin}${window.location.pathname}#event-${event.id}`);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${url}&color=${primaryColor.replace("#","")}&bgcolor=ffffff`;
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth:340, textAlign:"center" }} onClick={e=>e.stopPropagation()}>
-        <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:4 }}>{event.title}</h2>
-        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
-        <img src={qrUrl} alt="QR code" style={{ width:250, height:250, borderRadius:8, border:"1px solid #e7e4da" }} />
-        <div style={{ fontSize:12, color:"#76756f", marginTop:12, fontFamily:"Barlow,sans-serif" }}>Scan voor meer info · Zet op flyers</div>
-        <div style={{ display:"flex", gap:10, marginTop:20 }}>
-          <a href={qrUrl} download={`qr-${event.id}.png`} className="btn-red" style={{ flex:1, textDecoration:"none", display:"block", textAlign:"center", padding:"10px" }}>Download QR</a>
-          <button className="btn-ghost" onClick={onClose}>Sluiten</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- ATTENDEE MODAL ----
-function AttendeeModal({ event, attendees, onClose, onRegister, primaryColor }) {
-  const [name, setName] = useState("");
-  const [registered, setRegistered] = useState(() => loadLS("hhc09_registered_events", []).includes(event.id));
-  const list = attendees[event.id] || [];
-
-  function register() {
-    if (!name || registered) return;
-    onRegister(event.id, name);
-    const ids = loadLS("hhc09_registered_events", []);
-    if (!ids.includes(event.id)) saveLS("hhc09_registered_events", [...ids, event.id]);
-    setRegistered(true);
-    setName("");
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth:440 }} onClick={e=>e.stopPropagation()}>
-        <h2 style={{ fontSize:20, fontWeight:900, textTransform:"uppercase", marginBottom:4 }}>{event.title}</h2>
-        <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginBottom:20 }}>{formatDate(event.start_time)}</div>
-        <div style={{ background:"#f3f1ea", borderRadius:8, padding:16, marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:primaryColor, marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>✅ Aangemeld ({list.length})</div>
-          {list.length === 0
-            ? <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Nog niemand aangemeld</div>
-            : <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{list.map((a,i)=><span key={i} style={{ background:"#ebe8df", border:"1px solid #e7e4da", borderRadius:20, padding:"4px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>{a.attendee_name}</span>)}</div>
-          }
-        </div>
-        {registered ? (
-          <div style={{ background:primaryColor+"11", border:`1px solid ${primaryColor}33`, borderRadius:8, padding:"12px 14px", textAlign:"center", fontSize:14, fontWeight:700, color:primaryColor, fontFamily:"Barlow,sans-serif" }}>
-            ✅ Je bent al aangemeld vanaf dit toestel
-          </div>
-        ) : (
-          <div style={{ display:"flex", gap:8 }}>
-            <input className="input" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&register()} placeholder="Jouw naam" style={{ flex:1 }} />
-            <button className="btn-red" onClick={register} disabled={!name}>Ik kom!</button>
-          </div>
-        )}
-        <button className="btn-ghost" style={{ width:"100%", marginTop:10 }} onClick={onClose}>Sluiten</button>
-      </div>
-    </div>
-  );
-}
-
-// ---- WEATHER WIDGET ----
-function WeatherWidget({ location, startTime }) {
-  const [weather, setWeather] = useState(null);
-  const [status, setStatus] = useState("loading"); // loading | ok | outofrange | error | nolocation
-
-  useEffect(() => {
-    if (!location) { setStatus("nolocation"); return; }
-    const days = daysUntil(startTime);
-    if (days < 0 || days > 15) { setStatus("outofrange"); return; }
-    setStatus("loading");
-    let cancelled = false;
-    (async () => {
-      try {
-        const geoCacheKey = `hhc09_geo_${location.toLowerCase()}`;
-        let coords = loadLS(geoCacheKey, null);
-        if (!coords) {
-          const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=nl&country=NL`);
-          const geoData = await geoRes.json();
-          if (!geoData.results?.length) { if (!cancelled) setStatus("error"); return; }
-          coords = { lat:geoData.results[0].latitude, lon:geoData.results[0].longitude };
-          saveLS(geoCacheKey, coords);
-        }
-        const dateStr = new Date(startTime).toISOString().slice(0,10);
-        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`);
-        const wData = await wRes.json();
-        if (!wData.daily?.time?.length) { if (!cancelled) setStatus("error"); return; }
-        if (!cancelled) {
-          setWeather({
-            max: Math.round(wData.daily.temperature_2m_max[0]),
-            min: Math.round(wData.daily.temperature_2m_min[0]),
-            rain: wData.daily.precipitation_probability_max[0],
-            code: wData.daily.weathercode[0],
-          });
-          setStatus("ok");
-        }
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [location, startTime]);
-
-  if (status === "nolocation" || status === "outofrange") return null;
-
-  const info = weather ? getWeatherInfo(weather.code) : null;
-
-  return (
-    <div style={{ background:"#f3f1ea", borderRadius:8, padding:14, marginBottom:16 }}>
-      <div style={{ fontSize:10, color:"#56554d", fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Weersverwachting</div>
-      {status === "loading" && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Laden...</div>}
-      {status === "error" && <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>Geen voorspelling beschikbaar</div>}
-      {status === "ok" && weather && info && (
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <span style={{ fontSize:32 }}>{info.icon}</span>
-          <div>
-            <div style={{ fontSize:15, fontWeight:700 }}>{info.label} · {weather.min}° – {weather.max}°</div>
-            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif" }}>☔ {weather.rain}% kans op neerslag</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- ADMIN DASHBOARD ----
-function AdminDashboard({ events, attendees, bardienst, news, ideas, pinsList, pinResets, primaryColor, allCategories, categoryColors, onSelectEvent, onGoTab, onNewEvent, onNewBardienst, onNewNews, onOpenSettings }) {
-  const now = new Date();
-  const upcoming = events.filter(e => !e.archived && !e.hidden && isUpcoming(e.start_time));
-  const past = events.filter(e => !e.archived && !isUpcoming(e.start_time));
-  const archived = events.filter(e => e.archived);
-  const thisMonth = events.filter(e => { const d=new Date(e.start_time); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
-  const totalAttendees = events.reduce((s,e) => s+(attendees[e.id]||[]).length, 0);
-  const nextEvent = upcoming[0];
-  const nonArchived = events.filter(e=>!e.archived);
-
-  const todayStr = toDateStr(new Date());
-  const upcomingBardienst = bardienst.filter(b => b.shift_date >= todayStr).slice(0, 5);
-  const bardienstGaps = getUpcomingThursdays(6).filter(date => !bardienst.some(b => b.shift_date === date));
-  const eventsMissingLocation = upcoming.filter(e => !e.location).length;
-  const eventsMissingDescription = upcoming.filter(e => !e.description).length;
-
-  const recentNews = news.slice(0, 3);
-  const recentIdeas = ideas.slice(0, 3);
-
-  const totalUpcomingCost = upcoming.filter(e => e.cost > 0).reduce((s, e) => s + Number(e.cost), 0);
-  const sponsoredCount = nonArchived.filter(e => e.sponsor_name).length;
-
-  const attendeeCounts = {};
-  Object.values(attendees).flat().forEach(a => {
-    const nm = (a.attendee_name || "").trim();
-    if (!nm) return;
-    attendeeCounts[nm] = (attendeeCounts[nm] || 0) + 1;
-  });
-  const topAttendees = Object.entries(attendeeCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  const pinsByRole = { viewer:0, editor:0, super:0 };
-  pinsList.forEach(p => { if (pinsByRole[p.role] != null) pinsByRole[p.role]++; });
-
-  const stats = [
-    { label:"Komende events", value:upcoming.length, color:primaryColor },
-    { label:"Afgelopen", value:past.length, color:"#76756f" },
-    { label:"Deze maand", value:thisMonth.length, color:"#f4a261" },
-    { label:"Aanmeldingen", value:totalAttendees, color:"#2ec4b6" },
-    { label:"Gearchiveerd", value:archived.length, color:"#6a4c93" },
-    { label:"Bardiensten gepland", value:bardienst.length, color:"#457b9d" },
-    { label:"Mededelingen", value:news.length, color:"#e76f51" },
-    { label:"Ideeën binnen", value:ideas.length, color:"#2a9d8f" },
-  ];
-
-  const attentionItems = [
-    ...bardienstGaps.map(date => ({ type:"warn", icon:Beer, text:`Nog niemand ingepland voor bardienst op ${formatDate(date)}`, action:()=>onGoTab("bardienst") })),
-    ...(eventsMissingLocation > 0 ? [{ type:"info", icon:MapPin, text:`${eventsMissingLocation} komend${eventsMissingLocation===1?"":"e"} event${eventsMissingLocation===1?"":"s"} zonder locatie`, action:()=>onGoTab("agenda") }] : []),
-    ...(eventsMissingDescription > 0 ? [{ type:"info", icon:StickyNote, text:`${eventsMissingDescription} komend${eventsMissingDescription===1?"":"e"} event${eventsMissingDescription===1?"":"s"} zonder beschrijving`, action:()=>onGoTab("agenda") }] : []),
-    ...(ideas.length > 0 ? [{ type:"idea", icon:Lightbulb, text:`${ideas.length} idee${ideas.length===1?"":"ën"} van leden om te bekijken`, action:()=>onGoTab("ideeen") }] : []),
-    ...((pinResets?.length > 0) ? [{ type:"warn", icon:Settings, text:`${pinResets.length} pincode-verzoek${pinResets.length===1?"":"en"} wacht${pinResets.length===1?"":"en"} op afhandeling`, action:onOpenSettings }] : []),
-  ];
-
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginBottom:20, flexWrap:"wrap", gap:8 }}>
-        <button className="btn-sm" onClick={onNewEvent}>+ Event</button>
-        <button className="btn-sm" onClick={onNewBardienst}>+ Bardienst</button>
-        <button className="btn-sm" onClick={onNewNews}>+ Mededeling</button>
-        <button className="btn-sm" onClick={onOpenSettings} style={{ display:"flex", alignItems:"center", gap:5 }}><Settings size={13} strokeWidth={1.8} /> Instellingen</button>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))", gap:10, marginBottom:28 }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ background:"var(--color-surface)", border:`1px solid ${s.color}33`, borderLeft:`3px solid ${s.color}`, borderRadius:"var(--radius-card)", padding:"14px 16px", boxShadow:"var(--shadow-card)", animation:"fadeInUp .3s both" }}>
-            <div style={{ fontSize:34, fontWeight:900, color:s.color, lineHeight:1 }}>{s.value}</div>
-            <div style={{ fontSize:11, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:4, textTransform:"uppercase", letterSpacing:.5 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {attentionItems.length > 0 && (
-        <div style={{ marginBottom:28 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:10 }}>Aandachtspunten</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {attentionItems.map((it, i) => (
-              <div key={i} onClick={it.action} style={{ background:"var(--color-surface)", border:`1px solid ${it.type==="warn"?"var(--color-danger)":primaryColor}33`, borderLeft:`3px solid ${it.type==="warn"?"var(--color-danger)":primaryColor}`, borderRadius:"var(--radius-row)", padding:"10px 16px", display:"flex", alignItems:"center", gap:10, cursor:"pointer", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
-                <it.icon size={16} strokeWidth={1.8} style={{ color:it.type==="warn"?"var(--color-danger)":primaryColor, flexShrink:0 }} />
-                <span style={{ flex:1 }}>{it.text}</span>
-                <ChevronRight size={16} style={{ color:"var(--color-text-muted)" }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {nextEvent && (
-        <div style={{ marginBottom:28 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:10 }}>Eerstvolgende event</div>
-          <div onClick={()=>onSelectEvent(nextEvent)} style={{ background:"var(--color-surface)", border:`1px solid ${primaryColor}33`, borderRadius:"var(--radius-card)", padding:"16px 20px", cursor:"pointer", boxShadow:"var(--shadow-card)", animation:"fadeInUp .3s .1s both" }}>
-            <div style={{ fontSize:18, fontWeight:800, textTransform:"uppercase" }}>{nextEvent.title}</div>
-            <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:4 }}>{formatDate(nextEvent.start_time)}{nextEvent.location?` · ${nextEvent.location}`:""}</div>
-            <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:12 }}>
-              <span className="badge" style={{ background:(categoryColors[nextEvent.category]||primaryColor)+"22", color:categoryColors[nextEvent.category]||primaryColor }}>{nextEvent.category}</span>
-              <span style={{ fontSize:12, color:primaryColor, fontWeight:700 }}>Over {daysUntil(nextEvent.start_time)} dagen</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginBottom:28 }}>
-        <div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)" }}>Bardienstrooster</div>
-            <button className="btn-sm" onClick={()=>onGoTab("bardienst")} style={{ fontSize:11 }}>Alles →</button>
-          </div>
-          {upcomingBardienst.length === 0 ? (
-            <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>Geen komende bardiensten gepland</div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {upcomingBardienst.map(b => (
-                <div key={b.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-row)", padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
-                  <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong> — {b.names}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)" }}>Laatste mededelingen</div>
-            <button className="btn-sm" onClick={()=>onGoTab("nieuws")} style={{ fontSize:11 }}>Alles →</button>
-          </div>
-          {recentNews.length === 0 ? (
-            <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>Nog geen mededelingen geplaatst</div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {recentNews.map(n => (
-                <div key={n.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-row)", padding:"8px 12px", fontSize:13, fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:6 }}>
-                  {n.pinned && <Pin size={12} strokeWidth={2} style={{ color:"var(--color-accent)", flexShrink:0 }} />}<strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{n.title}</strong>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {recentIdeas.length > 0 && (
-        <div style={{ marginBottom:28 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)" }}>Nieuwste ideeën</div>
-            <button className="btn-sm" onClick={()=>onGoTab("ideeen")} style={{ fontSize:11 }}>Alles →</button>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            {recentIdeas.map(idea => (
-              <div key={idea.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:"3px solid #2a9d8f", borderRadius:"var(--radius-row)", padding:"10px 14px", fontSize:13, fontFamily:"Barlow,sans-serif" }}>
-                <div style={{ fontWeight:700, color:"#2a9d8f", marginBottom:2 }}>{idea.name || "Anoniem"}</div>
-                <div style={{ color:"var(--color-text-secondary)" }}>{idea.message.length>120?idea.message.slice(0,120)+"…":idea.message}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:20, marginBottom:28 }}>
-        <div>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:12 }}>Verdeling per categorie</div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {allCategories.map(cat => {
-              const cc = categoryColors[cat]||primaryColor;
-              const count = nonArchived.filter(e=>e.category===cat).length;
-              const pct = nonArchived.length ? (count/nonArchived.length)*100 : 0;
-              return (
-                <div key={cat} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <div style={{ width:90, fontSize:12, color:cc, fontWeight:700, textTransform:"uppercase", flexShrink:0 }}>{cat}</div>
-                  <div style={{ flex:1, height:6, background:"var(--color-border)", borderRadius:3, overflow:"hidden" }}>
-                    <div style={{ height:"100%", width:`${pct}%`, background:cc, borderRadius:3, transition:"width .6s ease" }} />
-                  </div>
-                  <div style={{ width:20, fontSize:13, fontWeight:700, color:cc, textAlign:"right", flexShrink:0 }}>{count}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:12 }}>Meest actieve leden</div>
-          {topAttendees.length === 0 ? (
-            <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>Nog geen aanmeldingen</div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {topAttendees.map(([name, count]) => (
-                <div key={name} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ flex:1, fontSize:13, fontFamily:"Barlow,sans-serif" }}>{name}</div>
-                  <span style={{ fontSize:12, background:primaryColor+"22", color:primaryColor, borderRadius:"var(--radius-pill)", padding:"1px 9px", fontWeight:700 }}>{count}×</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:10 }}>
-        <div style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-card)", padding:16, boxShadow:"var(--shadow-card)" }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:10 }}>Financieel (komend)</div>
-          <div style={{ fontSize:28, fontWeight:900, color:"var(--color-success)" }}>€{totalUpcomingCost.toFixed(2)}</div>
-          <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>totaal aan deelnamekosten</div>
-          <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{sponsoredCount} event{sponsoredCount===1?"":"s"} met sponsor</div>
-        </div>
-        <div style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-card)", padding:16, boxShadow:"var(--shadow-card)" }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-text-secondary)", marginBottom:10 }}>Beheerders</div>
-          <div style={{ fontSize:28, fontWeight:900, color:primaryColor }}>{pinsList.length}</div>
-          <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{pinsByRole.super} beheerder, {pinsByRole.editor} redacteur, {pinsByRole.viewer} bekijker</div>
-          <button className="btn-sm" onClick={onOpenSettings} style={{ marginTop:8 }}>Beheren</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- WEEK VIEW ----
-function WeekView({ events, weekStart, onWeekChange, categoryColors, primaryColor, onEventClick, adminMode }) {
-  const days = Array.from({length:7}, (_,i) => { const d=new Date(weekStart); d.setDate(d.getDate()+i); return d; });
-  const today = new Date();
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:8 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button className="btn-sm" onClick={()=>{ const d=new Date(weekStart); d.setDate(d.getDate()-7); onWeekChange(d); }}>←</button>
-          <span style={{ fontSize:15, fontWeight:700, textTransform:"uppercase", minWidth:200, textAlign:"center" }}>
-            {days[0].toLocaleDateString("nl-NL",{day:"numeric",month:"short"})} – {days[6].toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"})}
-          </span>
-          <button className="btn-sm" onClick={()=>{ const d=new Date(weekStart); d.setDate(d.getDate()+7); onWeekChange(d); }}>→</button>
-        </div>
-        <button className="btn-sm" onClick={()=>onWeekChange(getWeekStart(new Date()))}>Deze week</button>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
-        {days.map((day,i) => {
-          const isToday = day.toDateString()===today.toDateString();
-          const dayEvs = events.filter(e => !e.archived && (!e.hidden||adminMode) && dayInRange(day, e.start_time, e.end_time));
-          return (
-            <div key={i} style={{ minHeight:120, background:isToday?primaryColor+"11":"#ffffff", border:`1px solid ${isToday?primaryColor:"#ebe8df"}`, borderRadius:12, padding:"6px 4px" }}>
-              <div style={{ fontSize:9, color:isToday?primaryColor:"#56554d", fontWeight:700, textTransform:"uppercase", textAlign:"center", marginBottom:2 }}>{DAYS_NL[i]}</div>
-              <div style={{ fontSize:18, fontWeight:900, color:isToday?primaryColor:"#56554d", textAlign:"center", lineHeight:1, marginBottom:6 }}>{day.getDate()}</div>
-              {dayEvs.map(ev => {
-                const cc = categoryColors[ev.category]||primaryColor;
-                return (
-                  <div key={ev.id} onClick={()=>onEventClick(ev)} style={{ background:cc+"22", color:cc, fontSize:9, padding:"2px 4px", borderRadius:3, marginBottom:2, cursor:"pointer", overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis", fontWeight:700 }} title={ev.title}>
-                    {formatTime(ev.start_time)} {ev.title}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---- YEAR VIEW ----
-function YearView({ events, year, onYearChange, categoryColors, primaryColor, onEventClick }) {
-  const today = new Date();
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-        <button className="btn-sm" onClick={()=>onYearChange(year-1)}>←</button>
-        <span style={{ fontSize:20, fontWeight:700, textTransform:"uppercase", minWidth:60, textAlign:"center" }}>{year}</span>
-        <button className="btn-sm" onClick={()=>onYearChange(year+1)}>→</button>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))", gap:14 }}>
-        {MONTHS_NL.map((name, mi) => {
-          const monthEvs = events.filter(e => { const d=new Date(e.start_time); return d.getFullYear()===year&&d.getMonth()===mi; });
-          const days = getCalendarDays(year, mi);
-          return (
-            <div key={name} style={{ background:"#ffffff", border:"1px solid #ebe8df", borderRadius:14, padding:"12px 12px 10px", animation:"fadeInUp .3s both" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:monthEvs.length?primaryColor:"#56554d" }}>{name}</div>
-                {monthEvs.length>0 && <span style={{ fontSize:10, background:primaryColor+"22", color:primaryColor, borderRadius:10, padding:"1px 7px", fontWeight:700 }}>{monthEvs.length}</span>}
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:1 }}>
-                {DAYS_NL.map(d=><div key={d} style={{ fontSize:7, color:"#e7e4da", textAlign:"center", fontWeight:700, paddingBottom:2 }}>{d[0]}</div>)}
-                {days.map((day,i) => {
-                  if (!day) return <div key={`e${i}`} />;
-                  const dayEvs = monthEvs.filter(e=>new Date(e.start_time).getDate()===day.getDate());
-                  const isToday = day.toDateString()===today.toDateString();
-                  const cc = dayEvs.length ? (categoryColors[dayEvs[0].category]||primaryColor) : null;
-                  return (
-                    <div key={i} onClick={()=>dayEvs.length&&onEventClick(dayEvs[0])} title={dayEvs.map(e=>e.title).join(", ")} style={{
-                      fontSize:8, textAlign:"center", padding:"2px 0", borderRadius:2,
-                      cursor:dayEvs.length?"pointer":"default",
-                      background:cc?cc+"33":"transparent",
-                      color:isToday?primaryColor:dayEvs.length?"#1d1f3a":"#e7e4da",
-                      fontWeight:isToday||dayEvs.length?700:400,
-                      outline:isToday?`1px solid ${primaryColor}`:"none",
-                    }}>
-                      {day.getDate()}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ---- MAIN COMPONENT ----
 export default function HHCEvents() {
@@ -696,12 +48,16 @@ export default function HHCEvents() {
   const [saving, setSaving] = useState(false);
   const [recurrence, setRecurrence] = useState({ freq:"none", until:"", count:"" }); // nieuw #1: alleen bij nieuw event
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [detailTab, setDetailTab] = useState("details");
+  useEffect(() => { if (selectedEvent) setDetailTab("details"); }, [selectedEvent?.id]);
   const [showQR, setShowQR] = useState(null);
   const [showAttendees, setShowAttendees] = useState(null);
   const [calDate, setCalDate] = useState(() => { const d=new Date(); return {year:d.getFullYear(),month:d.getMonth()}; });
   const [calView, setCalView] = useState("month");
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [statsYear, setStatsYear] = useState(new Date().getFullYear());
+  const [archiefView, setArchiefView] = useState("afgelopen");
+  const [showFilters, setShowFilters] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -711,7 +67,6 @@ export default function HHCEvents() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [locationFilter, setLocationFilter] = useState("Alles");
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Drag-and-drop sort
   const [eventsOrder, setEventsOrder] = useState([]);
@@ -765,10 +120,15 @@ export default function HHCEvents() {
   const [ideas, setIdeas] = useState([]);
   const [showIdeaForm, setShowIdeaForm] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
-  const [homeFilter, setHomeFilter] = useState("komend");
   const [ideaName, setIdeaName] = useState("");
   const [ideaMessage, setIdeaMessage] = useState("");
   const [submittingIdea, setSubmittingIdea] = useState(false);
+
+  // Fotobibliotheek
+  const [photos, setPhotos] = useState([]);
+  const [photosLoaded, setPhotosLoaded] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoPicker, setPhotoPicker] = useState(null); // { onSelect(url) } terwijl de kies-modal open staat
 
   const primaryColor = clubSettings.primaryColor || "#e63946";
   const canEdit = adminMode && (adminRole === "editor" || adminRole === "super");
@@ -888,10 +248,58 @@ export default function HHCEvents() {
 
   useEffect(() => { if (adminMode && adminToken) loadIdeas(); }, [adminMode]);
 
+  async function loadPhotos() {
+    const res = await adminApi({ action:"photos", op:"list", token:adminToken });
+    if (res.ok) { setPhotos(res.data?.data || []); setPhotosLoaded(true); }
+    else if (res.status === 401) sessionExpired();
+  }
+
+  useEffect(() => { if (adminMode && adminToken && !photosLoaded) loadPhotos(); }, [adminMode]);
+
+  async function handleUploadPhoto(file) {
+    if (!file || !file.type?.startsWith("image/")) { showToast("Kies een afbeeldingsbestand", "error"); return null; }
+    setUploadingPhoto(true);
+    try {
+      const { base64, contentType } = await resizeImageToBase64(file);
+      const res = await adminApi({ action:"photos", op:"upload", token:adminToken, filename:file.name, contentType, dataBase64:base64 });
+      if (res.ok) {
+        const item = { name:res.data.data.name, url:res.data.data.url, created_at:new Date().toISOString() };
+        setPhotos(p => [item, ...p]);
+        showToast("Foto geüpload");
+        return item.url;
+      }
+      if (res.status === 401) sessionExpired(); else showToast(res.data?.error || "Upload mislukt", "error");
+      return null;
+    } catch {
+      showToast("Upload mislukt", "error");
+      return null;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handleDeletePhoto(name) {
+    if (!confirm("Foto verwijderen uit de bibliotheek?")) return;
+    const res = await adminApi({ action:"photos", op:"remove", token:adminToken, name });
+    if (res.ok) { setPhotos(p => p.filter(ph=>ph.name!==name)); showToast("Foto verwijderd"); }
+    else if (res.status === 401) sessionExpired();
+    else showToast(res.data?.error || "Kon foto niet verwijderen", "error");
+  }
+
+  function openPhotoPicker(onSelect) {
+    if (!photosLoaded) loadPhotos();
+    setPhotoPicker({ onSelect });
+  }
+
+  function choosePhoto(url) {
+    if (photoPicker?.onSelect) photoPicker.onSelect(url);
+    setPhotoPicker(null);
+  }
+
   async function handleSave() {
     if (!form.title || !form.start_time) return;
     setSaving(true);
-    const payload = { ...form, cost:form.cost ? parseFloat(form.cost) : null, end_time:form.end_time || null, series_id:form.series_id || null };
+    const payload = { ...form, start_time:localToUtcIso(form.start_time), cost:form.cost ? parseFloat(form.cost) : null, end_time:localToUtcIso(form.end_time), series_id:form.series_id || null };
 
     // Nieuw #1: terugkerende events -- alleen bij het aanmaken van een nieuw event.
     // Genereert losse rijen (elk gewoon een normaal event) i.p.v. herhaling on-the-fly te berekenen,
@@ -901,13 +309,13 @@ export default function HHCEvents() {
       const durationMs = form.end_time ? (new Date(form.end_time) - new Date(form.start_time)) : null;
       const ruleForDisplay = { freq:recurrence.freq, until:recurrence.until||null, count:starts.length };
 
-      const firstPayload = { ...payload, start_time:toDatetimeLocalStr(starts[0]), end_time:durationMs!=null?toDatetimeLocalStr(new Date(starts[0].getTime()+durationMs)):null, recurrence_rule:ruleForDisplay };
+      const firstPayload = { ...payload, start_time:starts[0].toISOString(), end_time:durationMs!=null?new Date(starts[0].getTime()+durationMs).toISOString():null, recurrence_rule:ruleForDisplay };
       const firstRes = await adminWrite("events", "POST", null, firstPayload);
       if (!firstRes.ok) { setSaving(false); return; }
       const parentId = firstRes.data?.[0]?.id;
 
       for (const d of starts.slice(1)) {
-        const childPayload = { ...payload, start_time:toDatetimeLocalStr(d), end_time:durationMs!=null?toDatetimeLocalStr(new Date(d.getTime()+durationMs)):null, recurrence_rule:ruleForDisplay, recurrence_parent_id:parentId||null };
+        const childPayload = { ...payload, start_time:d.toISOString(), end_time:durationMs!=null?new Date(d.getTime()+durationMs).toISOString():null, recurrence_rule:ruleForDisplay, recurrence_parent_id:parentId||null };
         await adminWrite("events", "POST", null, childPayload);
       }
       setSaving(false);
@@ -1145,7 +553,7 @@ export default function HHCEvents() {
 
   function openEdit(ev) {
     setEditingEvent(ev);
-    const f = { title:ev.title, description:ev.description||"", location:ev.location||"", start_time:ev.start_time?ev.start_time.slice(0,16):"", end_time:ev.end_time?ev.end_time.slice(0,16):"", category:ev.category||"Evenement", is_public:ev.is_public!==false, hidden:ev.hidden||false, sponsor_name:ev.sponsor_name||"", sponsor_logo:ev.sponsor_logo||"", image_url:ev.image_url||"", cost:ev.cost!=null?String(ev.cost):"", series_id:ev.series_id||"" };
+    const f = { title:ev.title, description:ev.description||"", location:ev.location||"", start_time:ev.start_time?toDatetimeLocalStr(new Date(ev.start_time)):"", end_time:ev.end_time?toDatetimeLocalStr(new Date(ev.end_time)):"", category:ev.category||"Evenement", is_public:ev.is_public!==false, hidden:ev.hidden||false, sponsor_name:ev.sponsor_name||"", sponsor_logo:ev.sponsor_logo||"", image_url:ev.image_url||"", cost:ev.cost!=null?String(ev.cost):"", series_id:ev.series_id||"" };
     setForm(f);
     formInitialRef.current = f;
     setShowForm(true);
@@ -1165,7 +573,7 @@ export default function HHCEvents() {
       setShowPinModal(false); setPinInput(""); setPinError(false);
       showToast(`Ingelogd als ${ROLE_LABELS[res.data.role]||res.data.role}`);
     } else {
-      setPinError(true);
+      setPinError(res.status===429 ? (res.data?.error||"Te veel pogingen, probeer het straks opnieuw") : true);
     }
   }
 
@@ -1173,7 +581,7 @@ export default function HHCEvents() {
     adminApi({ action:"logout", token:adminToken });
     setAdminMode(false); setAdminRole(null); setAdminToken(null);
     saveLS("hhc09_admin_session", null);
-    if (["statistieken","dashboard","ideeen"].includes(tab)) setTab("agenda");
+    if (["statistieken","dashboard","ideeen"].includes(tab)) setTab("home");
   }
 
   async function handleAddPin() {
@@ -1262,12 +670,6 @@ export default function HHCEvents() {
     return true;
   });
 
-  const upcomingTop = events.filter(ev => !ev.hidden && !ev.archived && isUpcoming(ev.start_time)).slice(0,3);
-  const homeEvents = events
-    .filter(ev => !ev.archived && (!ev.hidden||adminMode))
-    .filter(ev => homeFilter==="komend" ? isUpcoming(ev.start_time) : homeFilter==="afgelopen" ? !isUpcoming(ev.start_time) : true)
-    .sort((a,b)=>new Date(a.start_time)-new Date(b.start_time))
-    .slice(0,8);
   const pastEvents = events.filter(ev => !ev.archived && !isUpcoming(ev.start_time));
   const archivedEvents = events.filter(ev => ev.archived);
   const grouped = visibleEvents.reduce((acc,ev) => { const m=new Date(ev.start_time).toLocaleDateString("nl-NL",{month:"long",year:"numeric"}); if(!acc[m])acc[m]=[]; acc[m].push(ev); return acc; }, {});
@@ -1289,12 +691,12 @@ export default function HHCEvents() {
     { id:"agenda", label:"Agenda" },
     { id:"nieuws", label:"Nieuws" },
     { id:"bardienst", label:"Bardienst" },
-    { id:"kalender", label:"Kalender" },
     { id:"archief", label:"Archief" },
     ...(adminMode ? [
       { id:"statistieken", label:"Stats" },
       { id:"dashboard", label:"Dashboard" },
       { id:"ideeen", label:`Ideeën${ideas.length?` (${ideas.length})`:""}` },
+      { id:"fotos", label:"Foto's" },
     ] : []),
   ];
 
@@ -1304,19 +706,16 @@ export default function HHCEvents() {
   const moreNavTabs = tabList.filter(t => !PRIMARY_NAV_IDS.includes(t.id));
 
   const TAB_HEADERS = {
-    agenda: { title:"Agenda", subtitle:"Wat staat er op de planning?" },
+    home: { title:"Home", subtitle:"Wat staat er op de planning?" },
+    agenda: { title:"Agenda", subtitle:"Overzicht van alle events en activiteiten." },
     nieuws: { title:"Nieuws", subtitle:"Blijf op de hoogte van het laatste clubnieuws." },
     bardienst: { title:"Bardienst", subtitle:"Samen houden we de bar draaiende!" },
-    kalender: { title:"Kalender", subtitle:"Overzicht van alle events en activiteiten." },
     archief: { title:"Archief", subtitle:"Afgelopen events en meer." },
     statistieken: { title:"Statistieken", subtitle:"Cijfers over de agenda." },
     dashboard: { title:"Dashboard", subtitle:"In één oogopslag het overzicht." },
     ideeen: { title:"Ideeënbus", subtitle:"Deel je idee met de spelerscommissie." },
+    fotos: { title:"Foto's", subtitle:"Bibliotheek met afbeeldingen voor events, nieuws en sponsors." },
   };
-
-  const thisWeekStart = getWeekStart(new Date());
-  const thisWeekEnd = new Date(thisWeekStart); thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
-  const bardienstThisWeek = bardienst.filter(b => { const d = new Date(b.shift_date); return d >= thisWeekStart && d < thisWeekEnd; });
 
   return (
     <div style={{ minHeight:"100vh", background:"#F5F7FB", color:"#172033", fontFamily:"'Saira Condensed','Arial Narrow',Arial,sans-serif" }}>
@@ -1382,10 +781,9 @@ export default function HHCEvents() {
         .sheet-item{display:flex;align-items:center;gap:14px;width:100%;background:transparent;border:none;padding:13px 4px;font-family:'Saira Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;color:var(--color-text);cursor:pointer;border-bottom:1px solid var(--color-border);text-align:left}
         .sheet-item:last-child{border-bottom:none}
         .sheet-item:hover{color:var(--color-accent)}
-        .filter-toggle{display:none}
-        .cal-day{min-height:76px;padding:6px;border:1.5px solid var(--color-border);border-radius:10px;background:#fff;transition:background var(--motion-base)}
-        .cal-day.today{border-color:var(--color-accent)}
-        .cal-day.has-events{background:var(--color-surface-muted)}
+        .filter-pill-input{display:inline-block}
+        .filter-pill-input input,.filter-pill-input select{background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-text-secondary);padding:7px 14px 7px 32px;border-radius:var(--radius-pill);font-family:'Saira Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;height:auto;min-height:0}
+        .cal-day{min-height:70px;padding:4px 2px}
         .cal-dot{font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;margin-top:4px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
         select.input option{background:#ffffff}
         .settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--color-border)}
@@ -1407,9 +805,6 @@ export default function HHCEvents() {
           .admin-corner .btn-ghost-onbrand{padding:7px 11px;font-size:11px}
           main{padding-bottom:92px!important}
           .bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#ffffff;border-top:1px solid var(--color-border);z-index:90;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:var(--shadow-nav)}
-          .filter-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;border:1px solid var(--color-border);color:#56554d;padding:12px 16px;border-radius:var(--radius-input);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;margin-bottom:10px}
-          .filter-bar-content{display:none}
-          .filter-bar-content.expanded{display:block;animation:fadeInUp .2s ease both}
           .modal-overlay.sheet-mode{align-items:flex-end;padding:0}
           .modal.sheet-mode{border-radius:20px 20px 0 0;max-width:100%;width:100%;animation:sheetUp var(--motion-sheet) both}
           .modal.sheet-mode .modal-drag-handle{display:block;width:36px;height:4px;border-radius:2px;background:var(--color-border);margin:10px auto 0}
@@ -1432,67 +827,42 @@ export default function HHCEvents() {
 
       {/* Header */}
       <header className="no-print" style={{ background:"#f3f1ea", borderBottom:"1px solid #ebe8df" }}>
-        {tab==="home" ? (
-          <div style={{ position:"relative", overflow:"hidden", background:"linear-gradient(115deg, #F18C21 0%, #F18C21 55%, #d97812 100%)" }}>
-            <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(#ffffff33 1.5px,transparent 1.6px)", backgroundSize:"16px 16px" }} />
-            <div style={{ position:"relative", maxWidth:960, margin:"0 auto", padding:"16px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-                <img
-                  src={clubSettings.logo || clubLogo}
-                  alt="logo"
-                  style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"2px solid #ffffffcc" }}
-                  onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
-                />
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#fff", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
-                  <div style={{ fontSize:11, color:"#ffffffcc", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
-                </div>
+        <div style={{ position:"relative", height:170, overflow:"hidden" }}>
+          <img src={headerBanner} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+          <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(15,20,35,.4) 0%, rgba(15,20,35,.5) 45%, #f3f1ea 100%)" }} />
+          <div style={{ position:"relative", maxWidth:960, margin:"0 auto", padding:"16px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+              <img
+                src={clubSettings.logo || clubLogo}
+                alt="logo"
+                style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"2px solid #ffffffcc" }}
+                onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
+              />
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#fff", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
+                <div style={{ fontSize:11, color:"#ffffffcc", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                <button onClick={()=>setTab("agenda")} aria-label="Zoeken" style={{ background:"#ffffff33", border:"none", color:"#fff", width:36, height:36, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><Search size={16} strokeWidth={1.8} /></button>
-                <button
-                  onClick={()=>{ if (adminMode && canSettings) setShowSettings(true); else if (!adminMode) { setShowPinModal(true); setPinInput(""); setPinError(false); } }}
-                  aria-label="Instellingen"
-                  style={{ background:"#ffffff33", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}
-                ><Settings size={16} strokeWidth={1.8} /></button>
-              </div>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap", justifyContent:"flex-end" }}>
+              <button onClick={()=>setTab("home")} aria-label="Zoeken" style={{ background:"rgba(255,255,255,.16)", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><Search size={16} strokeWidth={1.8} /></button>
+              {adminMode ? (
+                <>
+                  <span style={{ fontSize:11, color:"#fff", background:"#ffffff33", padding:"3px 10px", borderRadius:999, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
+                  {canEdit && <button className="btn-red" onClick={openNew} style={{ fontSize:13, padding:"9px 16px" }}>+ Nieuw</button>}
+                  {canSettings && <button onClick={()=>setShowSettings(true)} aria-label="Instellingen" style={{ background:"rgba(255,255,255,.16)", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><Settings size={16} strokeWidth={1.8} /></button>}
+                  <button onClick={logout} style={{ background:"rgba(255,255,255,.16)", border:"none", color:"#fff", padding:"9px 14px", borderRadius:"var(--radius-pill)", fontSize:12, cursor:"pointer", fontFamily:"Barlow,sans-serif" }}>Uitloggen</button>
+                </>
+              ) : (
+                <button onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} aria-label="Beheer" style={{ background:"rgba(255,255,255,.16)", border:"none", color:"#fff", width:36, height:36, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}><Settings size={16} strokeWidth={1.8} /></button>
+              )}
             </div>
           </div>
-        ) : (
-          <div style={{ maxWidth:960, margin:"0 auto", padding:"18px 20px 16px" }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
-                <img
-                  src={clubSettings.logo || clubLogo}
-                  alt="logo"
-                  style={{ height:38, width:38, borderRadius:"50%", background:"#fff", padding:2, objectFit:"contain", flexShrink:0, border:"1px solid #ebe8df" }}
-                  onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }}
-                />
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:17, lineHeight:1, color:"#2E3192", textTransform:"uppercase", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{clubSettings.name}</div>
-                  <div style={{ fontSize:11, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:3 }}>{clubSettings.subtitle}</div>
-                </div>
-              </div>
-              <div className="admin-corner">
-                {adminMode ? (
-                  <>
-                    <span style={{ fontSize:11, color:"#2E3192", background:"#2E319214", padding:"3px 10px", borderRadius:999, fontWeight:700, textTransform:"uppercase" }}>{ROLE_LABELS[adminRole]||"Admin"}</span>
-                    {canEdit && <button className="btn-red" onClick={openNew} style={{ fontSize:13, padding:"9px 16px" }}>+ Nieuw</button>}
-                    {canSettings && <button className="btn-ghost-onbrand" onClick={()=>setShowSettings(true)} style={{ padding:9, display:"flex" }} aria-label="Instellingen"><Settings size={17} strokeWidth={1.8} /></button>}
-                    <button className="btn-ghost-onbrand" onClick={logout} style={{ fontSize:12 }}>Uitloggen</button>
-                  </>
-                ) : (
-                  <button className="btn-ghost-onbrand" onClick={()=>{ setShowPinModal(true); setPinInput(""); setPinError(false); }} style={{ padding:9, display:"flex" }} aria-label="Beheer"><Settings size={17} strokeWidth={1.8} /></button>
-                )}
-              </div>
-            </div>
+        </div>
 
-            {TAB_HEADERS[tab] && (
-              <div style={{ marginTop:20 }}>
-                <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,38px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>{TAB_HEADERS[tab].title}</h1>
-                <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{TAB_HEADERS[tab].subtitle}</div>
-              </div>
-            )}
+        {TAB_HEADERS[tab] && (
+          <div style={{ maxWidth:960, margin:"-38px auto 0", padding:"0 20px 0", position:"relative" }}>
+            <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,38px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>{TAB_HEADERS[tab].title}</h1>
+            <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:6 }}>{TAB_HEADERS[tab].subtitle}</div>
           </div>
         )}
 
@@ -1538,142 +908,61 @@ export default function HHCEvents() {
         </div>
       )}
 
-      {/* HOME */}
-      {tab==="home" && (
-        <>
-          <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"16px 20px 0" }}>
-            <h1 style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:"clamp(26px,5vw,34px)", letterSpacing:"-.5px", lineHeight:.95, textTransform:"uppercase", color:"#2E3192" }}>Overzicht</h1>
-            <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:6 }}>Alles van {clubSettings.name} op een rij</div>
-          </div>
-
-          {/* CTA-kaart */}
-          <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-            <div style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-card-featured)", padding:"22px 24px", boxShadow:"var(--shadow-card)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                <img src={clubSettings.logo || clubLogo} alt="logo" style={{ height:52, width:52, borderRadius:"50%", objectFit:"contain", flexShrink:0 }} onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }} />
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, lineHeight:1.1, color:"var(--color-text)" }}>{clubSettings.name}</div>
-                  <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{clubSettings.subtitle}</div>
-                </div>
-              </div>
-              <button className="btn-red" style={{ marginTop:18, width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }} onClick={()=>setTab("agenda")}>Agenda <ChevronRight size={16} strokeWidth={2.5} /></button>
-            </div>
-          </div>
-
-          {/* Evenementen -- gefilterde lijst */}
-          <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"26px 20px 0" }}>
-            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:20, color:"#2E3192", textTransform:"uppercase", marginBottom:12 }}>Evenementen</div>
-            <div style={{ display:"flex", gap:20, borderBottom:"1px solid var(--color-border)", marginBottom:14 }}>
-              {[["alle","Alle"],["komend","Komend"],["afgelopen","Afgelopen"]].map(([v,l]) => (
-                <button key={v} onClick={()=>setHomeFilter(v)} style={{ background:"none", border:"none", cursor:"pointer", padding:"0 0 10px", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:13, letterSpacing:.5, textTransform:"uppercase", color:homeFilter===v?"var(--color-accent)":"var(--color-text-secondary)", borderBottom:homeFilter===v?"2px solid var(--color-accent)":"2px solid transparent", marginBottom:-1 }}>{l}</button>
-              ))}
-            </div>
-            {homeEvents.length === 0 ? (
-              <div style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", padding:"10px 2px" }}>Geen evenementen in deze weergave.</div>
-            ) : (
-              <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                {homeEvents.map((ev2,i) => {
-                  const cc2 = categoryColors[ev2.category] || primaryColor;
-                  const d2 = new Date(ev2.start_time);
-                  const dayLabel = daysUntil(ev2.start_time)===0 ? "Vandaag" : d2.toLocaleDateString("nl-NL",{weekday:"long"});
-                  return (
-                    <div key={ev2.id}>
-                      <div style={{ fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"var(--color-text-muted)", marginBottom:6 }}>{dayLabel} · {d2.toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"})}</div>
-                      <div onClick={()=>setSelectedEvent(ev2)} style={{ display:"flex", alignItems:"center", gap:12, background:"var(--color-surface-muted)", borderRadius:"var(--radius-row)", padding:"12px 16px", cursor:"pointer", animation:"fadeInUp .25s ease both", animationDelay:`${i*0.04}s` }}>
-                        <span style={{ width:4, alignSelf:"stretch", borderRadius:2, background:cc2, flexShrink:0 }} />
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:16, fontWeight:800, textTransform:"uppercase", lineHeight:1.15 }}>{ev2.title}</div>
-                          <div style={{ fontSize:12, color:"var(--color-text-secondary)", marginTop:3, fontFamily:"Barlow,sans-serif" }}>{formatTime(ev2.start_time)}{ev2.location?` · ${ev2.location}`:""}</div>
-                        </div>
-                        <ChevronRight size={18} strokeWidth={1.8} style={{ color:"var(--color-text-muted)", flexShrink:0 }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Vastgepinde mededelingen */}
-          {news.some(n=>n.pinned) && (
-            <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-              <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", flexDirection:"column", gap:10, cursor:"pointer" }} onClick={()=>setTab("nieuws")}>
-                {news.filter(n=>n.pinned).map(n => (
-                  <div key={n.id} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-                    <span style={{ fontSize:22 }}>📌</span>
-                    <div>
-                      <div style={{ fontSize:15, fontWeight:800, textTransform:"uppercase" }}>{n.title}</div>
-                      <div style={{ fontSize:13, color:"#76756f", fontFamily:"Barlow,sans-serif", marginTop:2 }}>{n.body.length>140?n.body.slice(0,140)+"…":n.body}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Bardienst deze week */}
-          {bardienstThisWeek.length > 0 && (
-            <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"20px 20px 0" }}>
-              <div style={{ background:"#ffffff", border:`1px solid ${primaryColor}33`, borderLeft:`4px solid ${primaryColor}`, borderRadius:8, padding:"14px 20px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap", cursor:"pointer" }} onClick={()=>setTab("bardienst")}>
-                <span style={{ fontSize:26 }}>🍺</span>
-                <div style={{ flex:1, minWidth:200 }}>
-                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:2, textTransform:"uppercase", color:primaryColor, marginBottom:4 }}>Bardienst deze week</div>
-                  {bardienstThisWeek.map(b => (
-                    <div key={b.id} style={{ fontSize:14, fontFamily:"Barlow,sans-serif" }}>
-                      <strong style={{ fontFamily:"'Saira Condensed',sans-serif" }}>{formatDate(b.shift_date)}</strong>{b.time_label?` · ${b.time_label}`:""} — {b.names}
-                    </div>
-                  ))}
-                </div>
-                <button className="btn-sm" onClick={e=>{ e.stopPropagation(); setTab("bardienst"); }}>Bekijk alles</button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
       <div className="print-title" style={{ padding:"20px 20px 0", fontSize:24, fontWeight:700 }}>{clubSettings.name} — {clubSettings.subtitle} — {MONTHS_NL[calDate.month]} {calDate.year}</div>
 
-      {/* Search + filter bar -- alleen relevant voor de Agenda-lijst, niet voor Kalender/Bardienst/Nieuws/Archief */}
-      {tab==="agenda" && (
+      {/* Search + filter bar -- alleen relevant voor de volledige eventlijst op Home */}
+      {tab==="home" && (
       <div className="no-print" style={{ maxWidth:960, margin:"0 auto", padding:"16px 20px 0" }}>
-        <button className="filter-toggle" onClick={()=>setShowMobileFilters(v=>!v)}>
+        <div style={{ position:"relative", marginBottom:10 }}>
+          <Search size={16} strokeWidth={1.8} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-muted)", pointerEvents:"none" }} />
+          <input className="input" value={searchInput} onChange={e=>setSearchInput(e.target.value)} placeholder="Zoek een event..." style={{ paddingLeft:40, borderRadius:"var(--radius-pill)" }} />
+        </div>
+        <button onClick={()=>setShowFilters(v=>!v)} className="no-print" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", background:"var(--color-surface)", border:"1px solid var(--color-border)", borderRadius:"var(--radius-input)", padding:"11px 16px", cursor:"pointer", fontFamily:"'Saira Condensed',sans-serif", fontWeight:700, fontSize:14, color:"var(--color-text)", marginBottom:showFilters?14:0 }}>
           <span style={{ display:"flex", alignItems:"center", gap:8 }}><SlidersHorizontal size={16} strokeWidth={1.8} /> Filter{activeFilters?" (actief)":""}</span>
-          <span>{showMobileFilters?"▲":"▼"}</span>
+          <ChevronRight size={16} strokeWidth={1.8} style={{ transform:showFilters?"rotate(90deg)":"none", transition:"transform var(--motion-base)" }} />
         </button>
-        <div className={`filter-bar-content ${showMobileFilters?"expanded":""}`}>
-        <div style={{ display:"flex", gap:8, marginBottom:10, flexWrap:"wrap" }}>
-          <div style={{ position:"relative", flex:1, minWidth:200 }}>
-            <Search size={16} strokeWidth={1.8} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-muted)", pointerEvents:"none" }} />
-            <input className="input" value={searchInput} onChange={e=>setSearchInput(e.target.value)} placeholder="Zoek op naam, locatie, beschrijving..." style={{ paddingLeft:40, borderRadius:"var(--radius-pill)" }} />
+        {showFilters && (
+        <div className="no-print">
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center", marginTop:14, marginBottom:14 }}>
+          {["Alles",...allCategories].map(cat=>(
+            <button key={cat} className={`filter-btn ${filter===cat?"active":""}`} style={{ "--fc":cat==="Alles"?primaryColor:(categoryColors[cat]||primaryColor), display:"inline-flex", alignItems:"center", gap:6 }} onClick={()=>setFilter(cat)}>
+              {filter!==cat && <span style={{ width:8, height:8, borderRadius:"50%", background:cat==="Alles"?primaryColor:(categoryColors[cat]||primaryColor), flexShrink:0 }} />}
+              {cat==="Alles" ? "Alle categorieën" : cat}
+            </button>
+          ))}
+          <div className="filter-pill-input" style={{ position:"relative" }}>
+            <CalendarDays size={13} strokeWidth={1.8} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-secondary)", pointerEvents:"none" }} />
+            <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} title="Vanaf datum" />
           </div>
-          <input className="input" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ width:150 }} title="Vanaf datum" />
-          <input className="input" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ width:150 }} title="Tot datum" />
-          <select className="input" value={locationFilter} onChange={e=>setLocationFilter(e.target.value)} style={{ width:"auto" }}>
-            <option>Alles</option>
-            {allLocations.map(l=><option key={l}>{l}</option>)}
-          </select>
+          <div className="filter-pill-input" style={{ position:"relative" }}>
+            <CalendarDays size={13} strokeWidth={1.8} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-secondary)", pointerEvents:"none" }} />
+            <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} title="Tot datum" />
+          </div>
+          <div className="filter-pill-input" style={{ position:"relative" }}>
+            <MapPin size={13} strokeWidth={1.8} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--color-text-secondary)", pointerEvents:"none" }} />
+            <select value={locationFilter} onChange={e=>setLocationFilter(e.target.value)}>
+              <option>Alles</option>
+              {allLocations.map(l=><option key={l}>{l}</option>)}
+            </select>
+          </div>
           {activeFilters && <button className="btn-sm" onClick={()=>{ setSearchInput(""); setSearchQuery(""); setDateFrom(""); setDateTo(""); setLocationFilter("Alles"); }} style={{ display:"flex", alignItems:"center", gap:5 }}><X size={13} strokeWidth={2} /> Reset</button>}
         </div>
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-          {["Alles",...allCategories].map(cat=>(
-            <button key={cat} className={`filter-btn ${filter===cat?"active":""}`} style={{ "--fc":cat==="Alles"?primaryColor:(categoryColors[cat]||primaryColor) }} onClick={()=>setFilter(cat)}>{cat}</button>
-          ))}
-          <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
-            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>
-              <input type="checkbox" checked={showPast} onChange={e=>setShowPast(e.target.checked)} style={{ accentColor:"var(--color-accent)" }} />
-              Toon verleden
-            </label>
-            <button className="btn-sm no-print" onClick={()=>window.print()} style={{ display:"flex", alignItems:"center", gap:5 }}><Printer size={13} strokeWidth={1.8} /> Afdrukken</button>
-          </div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:12, flexWrap:"wrap", marginBottom:14 }}>
+          <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>
+            <input type="checkbox" checked={showPast} onChange={e=>setShowPast(e.target.checked)} style={{ accentColor:"var(--color-accent)" }} />
+            Toon verleden
+          </label>
+          <button className="btn-sm no-print" onClick={()=>window.print()} style={{ display:"flex", alignItems:"center", gap:5 }}><Printer size={13} strokeWidth={1.8} /> Afdrukken</button>
         </div>
         </div>
+        )}
       </div>
       )}
 
       <main style={{ maxWidth:960, margin:"0 auto", padding:"24px 20px 80px" }}>
 
-        {/* AGENDA */}
-        {tab==="agenda" && (
+        {/* AGENDA-LIJST (nu op Home) */}
+        {tab==="home" && (
           <>
           {/* Nieuw #178: bulk-actiebalk zodra er events geselecteerd zijn */}
           {canEdit && selectedEventIds.size>0 && (
@@ -1728,8 +1017,8 @@ export default function HHCEvents() {
                           onDragEnd={()=>{ setDraggedId(null); setDragOverId(null); }}
                         >
                           {ev.image_url && (
-                            <div style={{ margin:"-18px -20px 14px", overflow:"hidden", borderRadius:"8px 8px 0 0", height:140 }}>
-                              <img src={ev.image_url} alt={ev.title} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>e.target.parentElement.style.display="none"} />
+                            <div style={{ margin:"-18px -20px 14px", overflow:"hidden", borderRadius:"8px 8px 0 0" }}>
+                              <img src={ev.image_url} alt={ev.title} style={{ width:"100%", height:"auto", display:"block" }} onError={e=>e.target.parentElement.style.display="none"} />
                             </div>
                           )}
                           <div style={{ display:"flex", alignItems:"center", gap:16 }}>
@@ -1744,14 +1033,14 @@ export default function HHCEvents() {
                               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
                                 <span className="badge" style={{ background:cc+"22", color:cc }}>{ev.category}</span>
                                 {ev.hidden && <span className="badge" style={{ background:"#76756f22", color:"#76756f" }}>Verborgen</span>}
-                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:"var(--color-accent)22", color:"var(--color-accent-hover)" }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
+                                {!past && daysUntil(ev.start_time)<=3 && <span className="badge" style={{ background:"#F18C2122", color:"#DB7A12" }}>{daysUntil(ev.start_time)===0?"Vandaag!":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)}d`}</span>}
                                 {ev.cost > 0 && <span style={{ fontSize:11, color:"var(--color-success)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:3 }}><Euro size={11} strokeWidth={2} /> {Number(ev.cost).toFixed(2)}</span>}
                                 {ev.sponsor_name && <span style={{ fontSize:11, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>🤝 {ev.sponsor_name}</span>}
                               </div>
                               <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
                               {ev.description && <div style={{ fontSize:14, color:"var(--color-text-secondary)", marginTop:4, fontFamily:"Barlow,sans-serif", lineHeight:1.4 }}>{ev.description.length>100?ev.description.slice(0,100)+"…":ev.description}</div>}
                               <div style={{ marginTop:8, display:"flex", gap:14, flexWrap:"wrap" }}>
-                                <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>
+                                {isTimeSet(ev) && <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</span>}
                                 {ev.location && <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><MapPin size={13} strokeWidth={1.8} /> {ev.location}</span>}
                                 <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", display:"flex", alignItems:"center", gap:5 }}><Users size={13} strokeWidth={1.8} /> {(attendees[ev.id]||[]).length} aangemeld</span>
                               </div>
@@ -1775,6 +1064,9 @@ export default function HHCEvents() {
                   </div>
                 </div>
               ))}
+          {canEdit && visibleEvents.length>0 && (
+            <button className="btn-red no-print" style={{ width:"100%", marginTop:10 }} onClick={openNew}>+ Event toevoegen</button>
+          )}
           </>
         )}
 
@@ -1805,7 +1097,7 @@ export default function HHCEvents() {
                       )}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}>
-                          {n.pinned && <span className="badge" style={{ background:"var(--color-accent)22", color:"var(--color-accent-hover)", display:"inline-flex", alignItems:"center", gap:4 }}><Pin size={10} strokeWidth={2} /> Vastgepind</span>}
+                          {n.pinned && <span className="badge" style={{ background:"#F18C2122", color:"#DB7A12", display:"inline-flex", alignItems:"center", gap:4 }}><Pin size={10} strokeWidth={2} /> Vastgepind</span>}
                           <span style={{ fontSize:12, color:"var(--color-text-muted)" }}>{new Date(n.created_at).toLocaleDateString("nl-NL", { day:"numeric", month:"long", year:"numeric" })}</span>
                         </div>
                         <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:800, textTransform:"uppercase", lineHeight:1.1, color:"var(--color-text)" }}>{n.title}</div>
@@ -1846,6 +1138,9 @@ export default function HHCEvents() {
             const isPast = b.shift_date < todayStr0;
             const team = b.team_id ? teams.find(t=>t.id===b.team_id) : null;
             const checkedCount = (b.checklist||[]).filter(c=>c.done).length;
+            const shiftNames = b.names.split(",").map(n=>n.trim()).filter(Boolean);
+            const noShowCount = shiftNames.filter(n => (b.attendance && b.attendance[n])==="no_show").length;
+            const presentCount = shiftNames.length - noShowCount;
             return (
               <div key={b.id} className="ev-card" style={{ opacity:isPast?.5:1, cursor:"default" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:16 }}>
@@ -1854,25 +1149,29 @@ export default function HHCEvents() {
                     <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
+                    {team && (
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:15, color:team.color, textTransform:"uppercase", marginBottom:3, display:"flex", alignItems:"center", gap:6 }}>
+                        <Shirt size={14} strokeWidth={1.8} /> {team.name}
+                      </div>
+                    )}
                     <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
                       {isToday && <span className="badge" style={{ background:cc+"22", color:cc }}>Vandaag</span>}
                       {b.time_label && <span style={{ fontSize:13, color:"var(--color-text-secondary)", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {b.time_label}</span>}
+                      {shiftNames.length>0 && (
+                        <span className="badge" style={{ background:presentCount===shiftNames.length?"#20A4641e":"#F59E0B1e", color:presentCount===shiftNames.length?"#20A464":"#B7791F", display:"inline-flex", alignItems:"center", gap:4 }}>
+                          <CheckCircle2 size={11} strokeWidth={2} /> {presentCount}/{shiftNames.length} aanwezig
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:22, fontWeight:800, textTransform:"uppercase", lineHeight:1, color:"var(--color-text)" }}>{formatDate(b.shift_date)}</div>
                     <div style={{ marginTop:10, display:"flex", flexWrap:"wrap", gap:8 }}>
-                      {/* Nieuw #40: team-badge i.p.v. losse namen wanneer een team gekoppeld is */}
-                      {team && (
-                        <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:team.color+"22", border:`1px solid ${team.color}55`, borderRadius:"var(--radius-pill)", padding:"4px 14px", fontSize:13, fontWeight:800, color:team.color, textTransform:"uppercase" }}>
-                          <Shirt size={14} strokeWidth={1.8} /> {team.name}
-                        </span>
-                      )}
-                      {b.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i) => {
+                      {shiftNames.map((n,i) => {
                         const status = (b.attendance && b.attendance[n]) || "present";
                         const noShow = status === "no_show";
                         return (
                           <span key={i} onClick={canEdit?()=>toggleAttendance(b,n):undefined}
                             title={canEdit?(noShow?"Gemarkeerd als niet gekomen -- klik om te herstellen":"Klik om als 'niet gekomen' te markeren"):undefined}
-                            style={{ display:"inline-flex", alignItems:"center", gap:7, background:noShow?"var(--color-danger)11":cc+"14", border:`1px solid ${noShow?"var(--color-danger)55":cc+"33"}`, borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:noShow?"var(--color-danger)":"var(--color-text)", textDecoration:noShow?"line-through":"none", cursor:canEdit?"pointer":"default" }}>
+                            style={{ display:"inline-flex", alignItems:"center", gap:7, background:noShow?"#DC354511":cc+"14", border:`1px solid ${noShow?"#DC354555":cc+"33"}`, borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:noShow?"var(--color-danger)":"var(--color-text)", textDecoration:noShow?"line-through":"none", cursor:canEdit?"pointer":"default" }}>
                             <span style={{ width:22, height:22, borderRadius:"50%", background:noShow?"var(--color-danger)":cc, color:"#fff", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{noShow?"✗":initials(n)}</span>
                             {n}
                           </span>
@@ -1923,6 +1222,9 @@ export default function HHCEvents() {
                   const d = new Date(nextShift.shift_date);
                   const days = Math.round((new Date(nextShift.shift_date+"T00:00:00") - new Date(todayStr0+"T00:00:00")) / 86400000);
                   const daysLabel = days===0?"Vandaag":days===1?"Morgen":`${days} dagen`;
+                  const shiftNames = nextShift.names.split(",").map(n=>n.trim()).filter(Boolean);
+                  const noShowCount = shiftNames.filter(n => (nextShift.attendance && nextShift.attendance[n])==="no_show").length;
+                  const presentCount = shiftNames.length - noShowCount;
                   return (
                     <div style={{ marginBottom:30 }}>
                       <div style={{ fontSize:12, fontWeight:800, letterSpacing:2, color:"var(--color-text-secondary)", textTransform:"uppercase", marginBottom:10 }}>Eerstvolgende bardienst</div>
@@ -1937,6 +1239,9 @@ export default function HHCEvents() {
                             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, flexWrap:"wrap" }}>
                               <span style={{ background:"var(--color-accent)", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><Beer size={12} strokeWidth={2} /> Bardienst</span>
                               <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:"#fff", textTransform:"uppercase" }}>{daysLabel}</span>
+                              {shiftNames.length>0 && (
+                                <span style={{ background:"#ffffff26", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><CheckCircle2 size={12} strokeWidth={2} /> {presentCount}/{shiftNames.length} aanwezig</span>
+                              )}
                             </div>
                             <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:26, lineHeight:1.05, color:"#fff", textTransform:"uppercase" }}>{formatDate(nextShift.shift_date)}</div>
                             <div style={{ fontSize:14, color:"#c9cbef", marginTop:6 }}>{nextShift.time_label || "Tijd volgt"}</div>
@@ -1944,7 +1249,7 @@ export default function HHCEvents() {
                               {nextShift.team_id && (() => { const t = teams.find(x=>x.id===nextShift.team_id); return t ? (
                                 <span style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:"var(--radius-pill)", padding:"4px 14px", fontSize:13, fontWeight:800, color:"#fff", textTransform:"uppercase" }}><Shirt size={14} strokeWidth={1.8} /> {t.name}</span>
                               ) : null; })()}
-                              {nextShift.names.split(",").map(n=>n.trim()).filter(Boolean).map((n,i)=>(
+                              {shiftNames.map((n,i)=>(
                                 <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#fff" }}>
                                   <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:"var(--color-primary)", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
                                   {n}
@@ -1977,8 +1282,8 @@ export default function HHCEvents() {
           );
         })()}
 
-        {/* KALENDER */}
-        {tab==="kalender" && (
+        {/* KALENDER (nu op Agenda) */}
+        {tab==="agenda" && (
           <div>
             <div style={{ display:"flex", gap:6, marginBottom:16 }}>
               {[["month","Maand"],["week","Week"],["year","Jaar"]].map(([v,l])=>(
@@ -2010,10 +1315,12 @@ export default function HHCEvents() {
                       const isToday = day.toDateString()===new Date().toDateString();
                       return (
                         <div key={day.toISOString()} className={`cal-day ${isToday?"today":""} ${dayEvs.length?"has-events":""}`}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:isToday?primaryColor:(dayEvs.length?"var(--color-text)":"var(--color-text-muted)"), textAlign:"right", lineHeight:1 }}>{day.getDate()}</div>
+                          <div style={{ display:"flex", justifyContent:"flex-end" }}>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:14, lineHeight:1, width:24, height:24, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:"50%", color:isToday?"#fff":(dayEvs.length?"var(--color-text)":"var(--color-text-muted)"), background:isToday?"var(--color-accent)":"transparent" }}>{day.getDate()}</div>
+                          </div>
                           {dayEvs.slice(0,2).map(ev => {
                             const cc = categoryColors[ev.category]||primaryColor;
-                            return <span key={ev.id} className="cal-dot" style={{ background:cc, color:"#fff" }} onClick={()=>setSelectedEvent(ev)} title={ev.title}>{formatTime(ev.start_time)} {ev.title}</span>;
+                            return <span key={ev.id} className="cal-dot" style={{ background:cc, color:"#fff" }} onClick={()=>setSelectedEvent(ev)} title={ev.title}>{isTimeSet(ev) ? `${formatTime(ev.start_time)} ` : ""}{ev.title}</span>;
                           })}
                         </div>
                       );
@@ -2039,41 +1346,54 @@ export default function HHCEvents() {
         {/* ARCHIEF */}
         {tab==="archief" && (
           <div>
-            <div style={{ marginBottom:20 }}>
-              <span style={{ fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>{pastEvents.length} afgelopen event{pastEvents.length!==1?"s":""}</span>
+            <div style={{ display:"flex", gap:20, borderBottom:"1px solid var(--color-border)", marginBottom:20 }}>
+              <button onClick={()=>setArchiefView("afgelopen")} style={{ background:"none", border:"none", cursor:"pointer", padding:"0 0 10px", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:13, letterSpacing:.5, textTransform:"uppercase", color:archiefView==="afgelopen"?"var(--color-primary)":"var(--color-text-secondary)", borderBottom:archiefView==="afgelopen"?"2px solid var(--color-primary)":"2px solid transparent", marginBottom:-1 }}>Afgelopen events</button>
+              {adminMode && (
+                <button onClick={()=>setArchiefView("gearchiveerd")} style={{ background:"none", border:"none", cursor:"pointer", padding:"0 0 10px", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:13, letterSpacing:.5, textTransform:"uppercase", color:archiefView==="gearchiveerd"?"var(--color-primary)":"var(--color-text-secondary)", borderBottom:archiefView==="gearchiveerd"?"2px solid var(--color-primary)":"2px solid transparent", marginBottom:-1 }}>Gearchiveerd{archivedEvents.length>0?` (${archivedEvents.length})`:""}</button>
+              )}
+              {canDelete && (
+                <button onClick={()=>setArchiefView("prullenbak")} style={{ background:"none", border:"none", cursor:"pointer", padding:"0 0 10px", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:13, letterSpacing:.5, textTransform:"uppercase", color:archiefView==="prullenbak"?"var(--color-primary)":"var(--color-text-secondary)", borderBottom:archiefView==="prullenbak"?"2px solid var(--color-primary)":"2px solid transparent", marginBottom:-1 }}>Prullenbak{trashedEvents.length>0?` (${trashedEvents.length})`:""}</button>
+              )}
             </div>
-            {pastEvents.length===0
-              ? (
+
+            {archiefView==="afgelopen" && (
+              pastEvents.length===0
+                ? (
+                  <div style={{ textAlign:"center", padding:60 }}>
+                    <Archive size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                    <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen verleden evenementen</div>
+                  </div>
+                )
+                : <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                    {[...pastEvents].reverse().map(ev => {
+                      const cc = categoryColors[ev.category]||primaryColor;
+                      const att = (attendees[ev.id]||[]).length;
+                      const d = new Date(ev.start_time);
+                      return (
+                        <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", alignItems:"center", gap:14, background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:`4px solid ${cc}`, borderRadius:14, padding:"13px 16px", cursor:"pointer" }}>
+                          <div style={{ flex:"none", textAlign:"center", width:50 }}>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:22, color:cc, lineHeight:.85 }}>{d.getDate()}</div>
+                            <div style={{ fontSize:10, fontWeight:800, color:"var(--color-text-muted)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, color:"var(--color-text)", textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
+                            <div style={{ fontSize:13, color:"var(--color-text-secondary)", marginTop:4 }}>{formatDate(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
+                          </div>
+                          <span className="badge" style={{ background:cc+"18", color:cc, flex:"none" }}>{ev.category}</span>
+                          {att>0 && <span style={{ fontSize:13, color:"var(--color-text-muted)", flex:"none", display:"flex", alignItems:"center", gap:4 }}><Users size={13} strokeWidth={1.8} /> {att}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+            )}
+
+            {archiefView==="gearchiveerd" && adminMode && (
+              archivedEvents.length===0 ? (
                 <div style={{ textAlign:"center", padding:60 }}>
                   <Archive size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
-                  <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Nog geen verleden evenementen</div>
+                  <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Niets gearchiveerd</div>
                 </div>
-              )
-              : <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-                  {[...pastEvents].reverse().map(ev => {
-                    const cc = categoryColors[ev.category]||primaryColor;
-                    const att = (attendees[ev.id]||[]).length;
-                    const d = new Date(ev.start_time);
-                    return (
-                      <div key={ev.id} onClick={()=>setSelectedEvent(ev)} style={{ display:"flex", alignItems:"center", gap:14, background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:`4px solid ${cc}`, borderRadius:14, padding:"13px 16px", cursor:"pointer" }}>
-                        <div style={{ flex:"none", textAlign:"center", width:50 }}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:22, color:cc, lineHeight:.85 }}>{d.getDate()}</div>
-                          <div style={{ fontSize:10, fontWeight:800, color:"var(--color-text-muted)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:19, color:"var(--color-text)", textTransform:"uppercase", lineHeight:1 }}>{ev.title}</div>
-                          <div style={{ fontSize:13, color:"var(--color-text-secondary)", marginTop:4 }}>{formatDate(ev.start_time)}{ev.location?` · ${ev.location}`:""}</div>
-                        </div>
-                        <span className="badge" style={{ background:cc+"18", color:cc, flex:"none" }}>{ev.category}</span>
-                        {att>0 && <span style={{ fontSize:13, color:"var(--color-text-muted)", flex:"none", display:"flex", alignItems:"center", gap:4 }}><Users size={13} strokeWidth={1.8} /> {att}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-            }
-            {adminMode && archivedEvents.length>0 && (
-              <div style={{ marginTop:36 }}>
-                <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"#6a4c93", marginBottom:14 }}>Gearchiveerd ({archivedEvents.length})</div>
+              ) : (
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {archivedEvents.map(ev => (
                     <div key={ev.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:"3px solid #6a4c93", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
@@ -2086,13 +1406,17 @@ export default function HHCEvents() {
                     </div>
                   ))}
                 </div>
-              </div>
+              )
             )}
+
             {/* Nieuw #179: prullenbak -- zachtverwijderde events, te herstellen of definitief te wissen */}
-            {canDelete && trashedEvents.length>0 && (
-              <div style={{ marginTop:36 }}>
-                <div style={{ fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:2, color:"var(--color-danger)", marginBottom:6, display:"flex", alignItems:"center", gap:6 }}><Trash2 size={14} strokeWidth={1.8} /> Prullenbak ({trashedEvents.length})</div>
-                <div style={{ fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", marginBottom:14 }}>Verwijderde events -- herstel ze of wis ze definitief.</div>
+            {archiefView==="prullenbak" && canDelete && (
+              trashedEvents.length===0 ? (
+                <div style={{ textAlign:"center", padding:60 }}>
+                  <Trash2 size={44} strokeWidth={1.5} style={{ color:"var(--color-text-muted)", marginBottom:16 }} />
+                  <div style={{ color:"var(--color-text-secondary)", fontSize:14, letterSpacing:1, textTransform:"uppercase" }}>Prullenbak is leeg</div>
+                </div>
+              ) : (
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                   {trashedEvents.map(ev => (
                     <div key={ev.id} style={{ background:"var(--color-surface)", border:"1px solid var(--color-border)", borderLeft:"3px solid var(--color-danger)", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, opacity:.6, flexWrap:"wrap" }}>
@@ -2105,7 +1429,7 @@ export default function HHCEvents() {
                     </div>
                   ))}
                 </div>
-              </div>
+              )
             )}
           </div>
         )}
@@ -2176,7 +1500,7 @@ export default function HHCEvents() {
           <AdminDashboard
             events={events} attendees={attendees} bardienst={bardienst} news={news} ideas={ideas} pinsList={pinsList} pinResets={pinResets}
             primaryColor={primaryColor} allCategories={allCategories} categoryColors={categoryColors}
-            onSelectEvent={ev=>{ setSelectedEvent(ev); setTab("agenda"); }}
+            onSelectEvent={ev=>{ setSelectedEvent(ev); setTab("home"); }}
             onGoTab={setTab}
             onNewEvent={openNew}
             onNewBardienst={openNewBardienst}
@@ -2216,6 +1540,16 @@ export default function HHCEvents() {
           </div>
         )}
 
+        {/* FOTOBIBLIOTHEEK (admin) */}
+        {tab==="fotos" && adminMode && (
+          <div>
+            <div style={{ marginBottom:16, fontSize:13, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif" }}>
+              {photos.length} foto{photos.length!==1?"'s":""} — te gebruiken bij evenementen, nieuws en sponsorlogo's.
+            </div>
+            <PhotoLibraryGrid photos={photos} uploadingPhoto={uploadingPhoto} canEdit={canEdit} onUpload={handleUploadPhoto} onDelete={handleDeletePhoto} />
+          </div>
+        )}
+
       </main>
 
       {/* EVENT DETAIL MODAL */}
@@ -2236,77 +1570,104 @@ export default function HHCEvents() {
         return (
           <div className="modal-overlay sheet-mode" onClick={()=>setSelectedEvent(null)}>
             <div className="modal sheet-mode" style={{ maxWidth:640, padding:0, overflow:"hidden" }} onClick={e=>e.stopPropagation()}>
-              <div className="modal-drag-handle" />
+              {!ev.image_url && <div className="modal-drag-handle" />}
               {ev.image_url && (
-                <div style={{ overflow:"hidden", height:180 }}>
-                  <img src={ev.image_url} alt={ev.title} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e=>e.target.parentElement.style.display="none"} />
+                <div style={{ position:"relative" }}>
+                  <img src={ev.image_url} alt={ev.title} style={{ width:"100%", height:"auto", display:"block" }} onError={e=>e.target.parentElement.style.display="none"} />
+                  <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.45))", pointerEvents:"none" }} />
+                  <div style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", width:36, height:4, borderRadius:2, background:"#ffffff77" }} />
+                  <button onClick={()=>setSelectedEvent(null)} style={{ position:"absolute", top:14, right:14, border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center" }} aria-label="Sluiten"><X size={17} strokeWidth={2} /></button>
+                  <img src={clubSettings.logo || clubLogo} alt="" style={{ position:"absolute", right:20, bottom:-22, width:52, height:52, borderRadius:"50%", border:"3px solid #fff", background:"#fff", objectFit:"contain" }} onError={e=>{ e.target.onerror=null; e.target.src=clubLogo; }} />
                 </div>
               )}
-              <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
-                <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
-                <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
+              <div style={{ position:"relative", background:"var(--color-surface)", padding: ev.image_url ? "26px 28px 18px" : "26px 28px 18px" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
                   <div>
-                    <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20 }}>{ev.category}</span>
-                    {ev.hidden && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6 }}>Verborgen</span>}
-                    {(ev.recurrence_rule || ev.recurrence_parent_id) && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6, display:"inline-flex", alignItems:"center", gap:4 }}><Repeat size={11} strokeWidth={2} /> {ev.recurrence_rule?.freq==="monthly"?"Maandelijks":"Wekelijks"}</span>}
-                    {ev.series_id && <span style={{ background:"#ffffff33", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, marginLeft:6, display:"inline-flex", alignItems:"center", gap:4 }}><Trophy size={11} strokeWidth={2} /> {eventSeries.find(s=>s.id===ev.series_id)?.title||"Reeks"}</span>}
-                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:34, lineHeight:.9, color:"#fff", textTransform:"uppercase", marginTop:10 }}>{ev.title}</div>
+                    <span className="badge" style={{ background:cc+"1e", color:cc }}>{ev.category}</span>
+                    {ev.hidden && <span className="badge" style={{ background:"var(--color-surface-muted)", color:"var(--color-text-secondary)", marginLeft:6 }}>Verborgen</span>}
+                    {(ev.recurrence_rule || ev.recurrence_parent_id) && <span className="badge" style={{ background:"var(--color-surface-muted)", color:"var(--color-text-secondary)", marginLeft:6, display:"inline-flex", alignItems:"center", gap:4 }}><Repeat size={11} strokeWidth={2} /> {ev.recurrence_rule?.freq==="monthly"?"Maandelijks":"Wekelijks"}</span>}
+                    {ev.series_id && <span className="badge" style={{ background:"var(--color-surface-muted)", color:"var(--color-text-secondary)", marginLeft:6, display:"inline-flex", alignItems:"center", gap:4 }}><Trophy size={11} strokeWidth={2} /> {eventSeries.find(s=>s.id===ev.series_id)?.title||"Reeks"}</span>}
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:32, lineHeight:1, color:"var(--color-text)", textTransform:"uppercase", marginTop:10 }}>{ev.title}</div>
                   </div>
-                  <button onClick={()=>setSelectedEvent(null)} style={{ border:"none", cursor:"pointer", background:"#ffffff33", color:"#fff", width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flex:"none" }} aria-label="Sluiten"><X size={17} strokeWidth={2} /></button>
+                  {!ev.image_url && (
+                    <button onClick={()=>setSelectedEvent(null)} style={{ border:"none", cursor:"pointer", background:"var(--color-surface-muted)", color:"var(--color-text-secondary)", width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flex:"none" }} aria-label="Sluiten"><X size={17} strokeWidth={2} /></button>
+                  )}
                 </div>
               </div>
+
+              <div style={{ display:"flex", padding:"0 28px", borderBottom:"1px solid var(--color-border)" }}>
+                {[["details","Details"],["weer","Weer"],["locatie","Locatie"],["aanmeldingen","Aanmeldingen"]].map(([v,l]) => (
+                  <button key={v} onClick={()=>setDetailTab(v)} style={{ flex:"1 1 0", background:"none", border:"none", cursor:"pointer", padding:"0 4px 10px", fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:12, letterSpacing:.3, textTransform:"uppercase", color:detailTab===v?cc:"var(--color-text-secondary)", borderBottom:detailTab===v?`2px solid ${cc}`:"2px solid transparent", marginBottom:-1 }}>{l}</button>
+                ))}
+              </div>
+
               <div style={{ padding:"24px 28px 28px" }}>
-              <div className="grid-2" style={{ marginBottom:16 }}>
-                <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, gridColumn:isMultiDay(ev)?"1 / -1":undefined }}>
-                  <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum{isMultiDay(ev)?" · meerdaags":""}</div>
-                  <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"var(--color-text)" }}>{formatRange(ev.start_time, ev.end_time)}</div>
-                </div>
-                {!isMultiDay(ev) && (
-                  <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14 }}>
-                    <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
-                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"var(--color-text)" }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
+              {detailTab==="details" && (
+                <>
+                  <div className="grid-2" style={{ marginBottom:16 }}>
+                    <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, gridColumn:(isMultiDay(ev)||!isTimeSet(ev))?"1 / -1":undefined }}>
+                      <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Datum{isMultiDay(ev)?" · meerdaags":""}</div>
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:19, lineHeight:1.05, color:"var(--color-text)", textTransform:"uppercase" }}>{isMultiDay(ev) ? formatRangeCompact(ev.start_time, ev.end_time) : formatRange(ev.start_time, ev.end_time)}</div>
+                    </div>
+                    {!isMultiDay(ev) && isTimeSet(ev) && (
+                      <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14 }}>
+                        <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Tijd</div>
+                        <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"var(--color-text)" }}>{formatTime(ev.start_time)}{ev.end_time?` – ${formatTime(ev.end_time)}`:""}</div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              {ev.location && (
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(ev.location)}`} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"var(--color-surface-muted)", borderRadius:12, padding:14, marginBottom:16, textDecoration:"none" }}>
-                  <div>
-                    <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Locatie</div>
-                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"var(--color-text)", display:"flex", alignItems:"center", gap:7 }}><MapPin size={16} strokeWidth={1.8} /> {ev.location}</div>
+                  {ev.cost > 0 && (
+                    <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, marginBottom:16 }}>
+                      <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Kosten deelname</div>
+                      <div style={{ fontSize:24, fontWeight:900, color:"var(--color-success)" }}>€{Number(ev.cost).toFixed(2)}</div>
+                    </div>
+                  )}
+                  {ev.sponsor_name && (
+                    <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
+                      <div>
+                        <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>Gesponsord door</div>
+                        <div style={{ fontSize:15, fontWeight:700 }}>🤝 {ev.sponsor_name}</div>
+                      </div>
+                      {ev.sponsor_logo && <img src={ev.sponsor_logo} alt={ev.sponsor_name} style={{ height:36, objectFit:"contain", marginLeft:"auto" }} onError={e=>e.target.style.display="none"} />}
+                    </div>
+                  )}
+                  {ev.description ? <div style={{ fontSize:15, color:"var(--color-text-secondary)", lineHeight:1.6 }}>{ev.description}</div> : <div style={{ fontSize:13, color:"var(--color-text-muted)", fontFamily:"Barlow,sans-serif" }}>Geen beschrijving toegevoegd.</div>}
+                </>
+              )}
+              {detailTab==="weer" && <WeatherWidget location={ev.location} startTime={ev.start_time} />}
+              {detailTab==="locatie" && (
+                ev.location ? (
+                  <a href={`https://maps.google.com/?q=${encodeURIComponent(ev.location)}`} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"var(--color-surface-muted)", borderRadius:12, padding:14, textDecoration:"none" }}>
+                    <div>
+                      <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Locatie</div>
+                      <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:18, color:"var(--color-text)", display:"flex", alignItems:"center", gap:7 }}><MapPin size={16} strokeWidth={1.8} /> {ev.location}</div>
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:700, color:"var(--color-accent)" }}>Maps ↗</span>
+                  </a>
+                ) : <div style={{ fontSize:13, color:"var(--color-text-muted)", fontFamily:"Barlow,sans-serif" }}>Geen locatie opgegeven.</div>
+              )}
+              {detailTab==="aanmeldingen" && (
+                <>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:cc+"18", borderRadius:12, padding:"14px 16px", marginBottom:14, flexWrap:"wrap", gap:8 }}>
+                    <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:cc, display:"flex", alignItems:"center", gap:7 }}><Users size={16} strokeWidth={1.8} /> {(attendees[ev.id]||[]).length} aangemeld</span>
+                    {isUpcoming(ev.start_time) && <span style={{ fontSize:12, fontWeight:700, color:cc, textTransform:"uppercase" }}>{daysUntil(ev.start_time)===0?"Vandaag":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)} dagen`}</span>}
                   </div>
-                  <span style={{ fontSize:12, fontWeight:700, color:"var(--color-accent)" }}>Maps ↗</span>
-                </a>
+                  {(attendees[ev.id]||[]).length > 0 ? (
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
+                      {attendees[ev.id].map((a,i) => <span key={i} className="badge" style={{ background:"var(--color-surface-muted)", color:"var(--color-text)" }}>{a.attendee_name}</span>)}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:13, color:"var(--color-text-muted)", fontFamily:"Barlow,sans-serif", marginBottom:16 }}>Nog niemand aangemeld.</div>
+                  )}
+                  <button className="btn-sm" onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }}>Aanmelden</button>
+                </>
               )}
-              <WeatherWidget location={ev.location} startTime={ev.start_time} />
-              {ev.cost > 0 && (
-                <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, marginBottom:16 }}>
-                  <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>Kosten deelname</div>
-                  <div style={{ fontSize:24, fontWeight:900, color:"var(--color-success)" }}>€{Number(ev.cost).toFixed(2)}</div>
-                </div>
-              )}
-              {ev.sponsor_name && (
-                <div style={{ background:"var(--color-surface-muted)", borderRadius:12, padding:14, marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
-                  <div>
-                    <div style={{ fontSize:10, color:"var(--color-text-muted)", fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>Gesponsord door</div>
-                    <div style={{ fontSize:15, fontWeight:700 }}>🤝 {ev.sponsor_name}</div>
-                  </div>
-                  {ev.sponsor_logo && <img src={ev.sponsor_logo} alt={ev.sponsor_name} style={{ height:36, objectFit:"contain", marginLeft:"auto" }} onError={e=>e.target.style.display="none"} />}
-                </div>
-              )}
-              {ev.description && <div style={{ marginBottom:18, fontSize:15, color:"var(--color-text-secondary)", lineHeight:1.6 }}>{ev.description}</div>}
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:cc+"18", borderRadius:12, padding:"14px 16px", marginBottom:18, flexWrap:"wrap", gap:8 }}>
-                <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:800, fontSize:16, color:cc, display:"flex", alignItems:"center", gap:7 }}><Users size={16} strokeWidth={1.8} /> {(attendees[ev.id]||[]).length} aangemeld</span>
-                {isUpcoming(ev.start_time) && <span style={{ fontSize:12, fontWeight:700, color:cc, textTransform:"uppercase" }}>{daysUntil(ev.start_time)===0?"Vandaag":daysUntil(ev.start_time)===1?"Morgen":`${daysUntil(ev.start_time)} dagen`}</span>}
-                <button className="btn-sm" onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }} style={{ flex:"none" }}>Bekijken / Aanmelden</button>
-              </div>
-              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:20 }}>
                 <button className="btn-red" style={{ flex:1 }} onClick={()=>{ setShowAttendees(ev); setSelectedEvent(null); }}>Ik kom!</button>
                 <button className="btn-ghost" onClick={()=>setSelectedEvent(null)}>Sluiten</button>
               </div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:10 }}>
-                <button className="btn-sm" onClick={()=>downloadICS(ev)} style={{ display:"inline-flex", alignItems:"center", gap:5 }}><CalendarPlus size={13} strokeWidth={1.8} /> .ics</button>
-                <a href={getGoogleCalendarUrl(ev)} target="_blank" rel="noopener noreferrer" className="btn-sm" style={{ textDecoration:"none", display:"inline-flex", alignItems:"center", gap:5 }}><CalendarPlus size={13} strokeWidth={1.8} /> Google Calendar</a>
-                <button className="btn-sm" onClick={()=>{ setShowQR(ev); setSelectedEvent(null); }} style={{ display:"inline-flex", alignItems:"center", gap:5 }}><QrCode size={13} strokeWidth={1.8} /> QR Code</button>
                 {canEdit && (
                   <>
                     <button className="btn-sm" onClick={()=>{ setSelectedEvent(null); openEdit(ev); }}>Bewerken</button>
@@ -2351,8 +1712,42 @@ export default function HHCEvents() {
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Titel *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Evenementnaam" /></div>
               <div className="grid-2">
-                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label><input className="input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
-                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label><input className="input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
+                {(() => {
+                  const [sDate,sTime] = (form.start_time||"").split("T");
+                  const startHasTime = !!sTime && sTime!=="00:00";
+                  return (
+                    <div>
+                      <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Start *</label>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <input className="input" type="date" value={sDate||""} onChange={e=>setForm(f=>({...f,start_time:`${e.target.value}T${sTime||"00:00"}`}))} />
+                        {startHasTime && <input className="input" type="time" value={sTime||""} onChange={e=>setForm(f=>({...f,start_time:`${sDate||""}T${e.target.value}`}))} />}
+                      </div>
+                      <label style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", cursor:"pointer" }}>
+                        <input type="checkbox" checked={!startHasTime} onChange={e=>setForm(f=>{ const [d] = (f.start_time||"").split("T"); return { ...f, start_time:`${d||""}T${e.target.checked?"00:00":"12:00"}` }; })} style={{ accentColor:"var(--color-accent)" }} />
+                        Geen specifieke tijd
+                      </label>
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  const [eDate,eTime] = (form.end_time||"").split("T");
+                  const endHasTime = !!eTime && eTime!=="00:00";
+                  return (
+                    <div>
+                      <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Einde</label>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <input className="input" type="date" value={eDate||""} onChange={e=>setForm(f=>({...f,end_time:e.target.value?`${e.target.value}T${eTime||"00:00"}`:""}))} />
+                        {endHasTime && <input className="input" type="time" value={eTime||""} onChange={e=>setForm(f=>({...f,end_time:`${eDate||""}T${e.target.value}`}))} />}
+                      </div>
+                      {form.end_time && (
+                        <label style={{ display:"flex", alignItems:"center", gap:6, marginTop:6, fontSize:12, color:"var(--color-text-secondary)", fontFamily:"Barlow,sans-serif", cursor:"pointer" }}>
+                          <input type="checkbox" checked={!endHasTime} onChange={e=>setForm(f=>{ const [d] = (f.end_time||"").split("T"); return { ...f, end_time:`${d||""}T${e.target.checked?"00:00":"12:00"}` }; })} style={{ accentColor:"var(--color-accent)" }} />
+                          Geen specifieke tijd
+                        </label>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="grid-2">
                 <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Categorie</label>
@@ -2401,13 +1796,21 @@ export default function HHCEvents() {
               )}
               <div>
                 <label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Afbeelding URL</label>
-                <input className="input" value={form.image_url} onChange={e=>setForm(f=>({...f,image_url:e.target.value}))} placeholder="https://... (banner/foto)" />
+                <div style={{ display:"flex", gap:8 }}>
+                  <input className="input" value={form.image_url} onChange={e=>setForm(f=>({...f,image_url:e.target.value}))} placeholder="https://... (banner/foto)" style={{ flex:1 }} />
+                  <button type="button" className="btn-sm" onClick={()=>openPhotoPicker(url=>setForm(f=>({...f,image_url:url})))}>Bibliotheek</button>
+                </div>
                 {form.image_url && <img src={form.image_url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:10, border:"1px solid var(--color-border)", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
               </div>
               <div className="grid-3">
                 <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Kosten (€)</label><input className="input" type="number" min="0" step="0.01" value={form.cost} onChange={e=>setForm(f=>({...f,cost:e.target.value}))} placeholder="0.00" /></div>
                 <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsornaam</label><input className="input" value={form.sponsor_name} onChange={e=>setForm(f=>({...f,sponsor_name:e.target.value}))} placeholder="Bakkerij Jansen" /></div>
-                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label><input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." /></div>
+                <div><label style={{ fontSize:11, color:"var(--color-text-secondary)", display:"block", marginBottom:5, fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Sponsorlogo URL</label>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <input className="input" value={form.sponsor_logo} onChange={e=>setForm(f=>({...f,sponsor_logo:e.target.value}))} placeholder="https://..." style={{ flex:1 }} />
+                    <button type="button" className="btn-sm" onClick={()=>openPhotoPicker(url=>setForm(f=>({...f,sponsor_logo:url})))}>Kies</button>
+                  </div>
+                </div>
               </div>
               <div style={{ display:"flex", gap:16, alignItems:"center" }}>
                 <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:14, fontFamily:"Barlow,sans-serif" }}><input type="checkbox" checked={form.is_public} onChange={e=>setForm(f=>({...f,is_public:e.target.checked}))} style={{ accentColor:"var(--color-accent)" }} /> Publiek</label>
@@ -2461,9 +1864,9 @@ export default function HHCEvents() {
         return (
           <div className="modal-overlay sheet-mode" onClick={()=>setSelectedNews(null)}>
             <div className="modal sheet-mode" style={{ maxWidth:640, padding:0 }} onClick={e=>e.stopPropagation()}>
-              <div className="modal-drag-handle" />
               <div style={{ position:"relative", background:cc, padding:"26px 28px", overflow:"hidden" }}>
                 <div style={{ position:"absolute", top:-16, right:16, width:120, height:120, backgroundImage:"radial-gradient(#ffffff44 1.5px,transparent 1.6px)", backgroundSize:"14px 14px", pointerEvents:"none" }} />
+                <div style={{ position:"absolute", top:10, left:"50%", transform:"translateX(-50%)", width:36, height:4, borderRadius:2, background:"#ffffff55" }} />
                 <div style={{ position:"relative", display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:14 }}>
                   <div>
                     {n.pinned && <span style={{ background:"#fff", color:cc, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:20, display:"inline-flex", alignItems:"center", gap:4 }}><Pin size={11} strokeWidth={2} /> Vastgepind</span>}
@@ -2514,7 +1917,10 @@ export default function HHCEvents() {
                 {newsForm.images.map((url, i) => (
                   <div key={i} style={{ display:"flex", gap:8, alignItems:"flex-start", marginBottom:8 }}>
                     <div style={{ flex:1 }}>
-                      <input className="input" value={url} onChange={e=>setNewsForm(f=>({...f,images:f.images.map((u,ui)=>ui===i?e.target.value:u)}))} placeholder="https://... (foto bij het bericht)" />
+                      <div style={{ display:"flex", gap:8 }}>
+                        <input className="input" value={url} onChange={e=>setNewsForm(f=>({...f,images:f.images.map((u,ui)=>ui===i?e.target.value:u)}))} placeholder="https://... (foto bij het bericht)" style={{ flex:1 }} />
+                        <button type="button" className="btn-sm" onClick={()=>openPhotoPicker(u=>setNewsForm(f=>({...f,images:f.images.map((uu,ui)=>ui===i?u:uu)})))}>Bibliotheek</button>
+                      </div>
                       {url && <img src={url} alt="preview" style={{ width:"100%", height:90, objectFit:"cover", borderRadius:6, border:"1px solid #e7e4da", marginTop:8 }} onError={e=>e.target.style.display="none"} />}
                     </div>
                     {newsForm.images.length>1 && <button type="button" className="btn-sm" onClick={()=>setNewsForm(f=>({...f,images:f.images.filter((_,ui)=>ui!==i)}))} style={{ color:"#e63946" }}>✕</button>}
@@ -2530,6 +1936,19 @@ export default function HHCEvents() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* FOTO-KIEZER MODAL */}
+      {photoPicker && (
+        <PhotoPickerModal
+          photos={photos}
+          uploadingPhoto={uploadingPhoto}
+          canEdit={canEdit}
+          onUpload={handleUploadPhoto}
+          onSelect={choosePhoto}
+          onDelete={handleDeletePhoto}
+          onClose={()=>setPhotoPicker(null)}
+        />
       )}
 
       {/* IDEE FORM MODAL */}
@@ -2560,7 +1979,7 @@ export default function HHCEvents() {
                 <h2 style={{ fontSize:22, fontWeight:900, textTransform:"uppercase", marginBottom:6 }}>Beheer</h2>
                 <p style={{ color:"#76756f", fontSize:14, fontFamily:"Barlow,sans-serif", marginBottom:20 }}>Voer je pincode in</p>
                 <input className="input" type="password" placeholder="Pincode" value={pinInput} onChange={e=>{ setPinInput(e.target.value); setPinError(false); }} onKeyDown={e=>e.key==="Enter"&&submitPin()} style={{ fontSize:24, letterSpacing:8, textAlign:"center", marginBottom:pinError?8:16 }} autoFocus />
-                {pinError && <p style={{ color:"#e63946", fontSize:13, textAlign:"center", marginBottom:16, fontFamily:"Barlow,sans-serif" }}>Verkeerde pincode</p>}
+                {pinError && <p style={{ color:"#e63946", fontSize:13, textAlign:"center", marginBottom:16, fontFamily:"Barlow,sans-serif" }}>{typeof pinError==="string"?pinError:"Verkeerde pincode"}</p>}
                 <div style={{ display:"flex", gap:10 }}>
                   <button className="btn-red" onClick={submitPin} style={{ flex:1 }}>Inloggen</button>
                   <button className="btn-ghost" onClick={()=>setShowPinModal(false)}>Annuleren</button>
