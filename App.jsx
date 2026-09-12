@@ -209,7 +209,7 @@ export default function HHCEvents() {
     try {
       const [evs, atts, bd, nw, trashed, tms, srs] = await Promise.all([
         sb(endpoint),
-        sb("event_attendees?select=event_id,attendee_name"),
+        sb("event_attendees?select=id,event_id,attendee_name"),
         sb("bardienst?order=shift_date.asc"),
         sb("mededelingen?order=pinned.desc,created_at.desc"),
         adminMode ? sb("events?deleted_at=not.is.null&order=deleted_at.desc") : Promise.resolve([]),
@@ -400,6 +400,13 @@ export default function HHCEvents() {
   async function handleAttend(eventId, name) {
     await sb("event_attendees", "POST", { event_id:eventId, attendee_name:name });
     await load();
+  }
+
+  async function handleRemoveAttendee(attendeeId) {
+    const res = await adminWrite("event_attendees", "DELETE", attendeeId);
+    if (!res.ok) return;
+    await load();
+    showToast("Aanmelding verwijderd");
   }
 
   async function handleSaveBardienst() {
@@ -1707,7 +1714,7 @@ export default function HHCEvents() {
       })()}
 
       {showQR && <QRModal event={showQR} onClose={()=>setShowQR(null)} primaryColor={primaryColor} />}
-      {showAttendees && <AttendeeModal event={showAttendees} attendees={attendees} onClose={()=>setShowAttendees(null)} onRegister={handleAttend} primaryColor={primaryColor} />}
+      {showAttendees && <AttendeeModal event={showAttendees} attendees={attendees} onClose={()=>setShowAttendees(null)} onRegister={handleAttend} onRemove={canDelete?handleRemoveAttendee:undefined} primaryColor={primaryColor} />}
 
       {/* FORM MODAL */}
       {showForm && (
