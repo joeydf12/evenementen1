@@ -10,7 +10,7 @@ import {
   toDatetimeLocalStr, localToUtcIso, computeRecurrenceStarts, isUpcoming, daysUntil, toDateStr,
   getNextThursday, getWeekStart, getCalendarDays,
 } from "./lib/dates.js";
-import { isDirty, contrastWithWhite, handleModalFocus, downloadICS, resizeImageToBase64 } from "./lib/utils.js";
+import { isDirty, contrastWithWhite, handleModalFocus, resizeImageToBase64 } from "./lib/utils.js";
 
 import NavIcon from "./components/NavIcon.jsx";
 import SkeletonCard from "./components/SkeletonCard.jsx";
@@ -1053,7 +1053,6 @@ export default function HHCEvents() {
                               <button className="btn-sm" onClick={()=>openEdit(ev)}>Bewerken</button>
                               <button className="btn-sm" onClick={()=>handleDuplicate(ev)}>Dupliceren</button>
                               <button className="btn-sm" onClick={()=>setShowQR(ev)}>QR Code</button>
-                              <button className="btn-sm" onClick={()=>downloadICS(ev)}>📅 .ics</button>
                               <button className="btn-sm" onClick={()=>handleArchive(ev)} style={{ color:"#f4a261" }}>Archiveren</button>
                               {canDelete && <button className="btn-sm" onClick={()=>handleDelete(ev.id)} style={{ color:"#e63946" }}>Verwijderen</button>}
                             </div>
