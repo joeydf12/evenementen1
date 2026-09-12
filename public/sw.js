@@ -1,4 +1,4 @@
-const CACHE = "hhc09-v3";
+const CACHE = "hhc09-v4";
 const ASSETS = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -12,19 +12,25 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-  const url = new URL(e.request.url);
-  // Network-first for Supabase API calls
-  if (url.hostname.includes("supabase")) {
-    e.respondWith(
-      fetch(e.request)
-        .then(res => { const clone = res.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); return res; })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
-  // Cache-first for static assets
-  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-    if (res.status === 200) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); }
-    return res;
-  })));
+  const req = e.request;
+  const url = new URL(req.url);
+
+  // Alleen zelf afhandelen wat van dit domein komt en met GET wordt opgehaald --
+  // requests van browserextensies (chrome-extension://) of niet-GET requests
+  // (bv. Supabase POST/PATCH) mag de Cache API niet in, dat gooit een fout.
+  // Zulke requests laten we ongemoeid (geen respondWith = gewoon normaal netwerk).
+  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // Network-first i.p.v. cache-first: elke nieuwe deploy moet meteen zichtbaar
+  // zijn voor gebruikers die de app al eerder open hadden, i.p.v. voor altijd
+  // vast te zitten aan de gecachte JS-bundel van de vorige build. Alleen bij
+  // een echte netwerkfout (bv. offline) valt hij terug op de laatste cache.
+  e.respondWith(
+    fetch(req)
+      .then(res => {
+        if (res.status === 200) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(req, clone)); }
+        return res;
+      })
+      .catch(() => caches.match(req))
+  );
 });
