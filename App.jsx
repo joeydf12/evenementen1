@@ -1120,6 +1120,13 @@ export default function HHCEvents() {
 
         {/* BARDIENST */}
         {tab==="bardienst" && (() => {
+          // Vaste kleuren-spec voor deze pagina (los van de globale --color-primary/--color-accent
+          // tokens, zodat een eventuele wijziging daarvan elders in de app dit vastgelegde
+          // Bardienst-ontwerp niet per ongeluk meeverandert).
+          const BD_NAVY = "#30329B";
+          const BD_ORANGE = "#F7941D";
+          const BD_SUCCESS = "#24A56A";
+          const BD_SUCCESS_BG = "#E8F7EF";
           const todayStr0 = toDateStr(new Date());
           const upcomingShifts = bardienst.filter(b => b.shift_date >= todayStr0);
           const pastShifts = bardienst.filter(b => b.shift_date < todayStr0);
@@ -1142,11 +1149,11 @@ export default function HHCEvents() {
             const noShowCount = shiftNames.filter(n => (b.attendance && b.attendance[n])==="no_show").length;
             const presentCount = shiftNames.length - noShowCount;
             return (
-              <div key={b.id} className="ev-card" style={{ opacity:isPast?.5:1, cursor:"default" }}>
+              <div key={b.id} className="ev-card" style={{ opacity:isPast?.5:1, cursor:"default", borderRadius:13, boxShadow:"0 2px 8px rgba(20,30,70,.06)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                  <div style={{ background:cc, color:"#fff", borderRadius:12, width:60, height:60, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:24, fontWeight:900, lineHeight:1 }}>{d.getDate()}</div>
-                    <div style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                  <div style={{ background:cc, color:"#fff", borderRadius:10, width:47, height:48, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontSize:20, fontWeight:900, lineHeight:1 }}>{d.getDate()}</div>
+                    <div style={{ fontSize:9, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     {team && (
@@ -1158,7 +1165,7 @@ export default function HHCEvents() {
                       {isToday && <span className="badge" style={{ background:cc+"22", color:cc }}>Vandaag</span>}
                       {b.time_label && <span style={{ fontSize:13, color:"var(--color-text-secondary)", display:"flex", alignItems:"center", gap:5 }}><Clock size={13} strokeWidth={1.8} /> {b.time_label}</span>}
                       {shiftNames.length>0 && (
-                        <span className="badge" style={{ background:presentCount===shiftNames.length?"#20A4641e":"#F59E0B1e", color:presentCount===shiftNames.length?"#20A464":"#B7791F", display:"inline-flex", alignItems:"center", gap:4 }}>
+                        <span className="badge" style={{ background:presentCount===shiftNames.length?BD_SUCCESS_BG:"#F59E0B1e", color:presentCount===shiftNames.length?BD_SUCCESS:"#B7791F", display:"inline-flex", alignItems:"center", gap:4 }}>
                           <CheckCircle2 size={11} strokeWidth={2} /> {presentCount}/{shiftNames.length} aanwezig
                         </span>
                       )}
@@ -1228,19 +1235,19 @@ export default function HHCEvents() {
                   return (
                     <div style={{ marginBottom:30 }}>
                       <div style={{ fontSize:12, fontWeight:800, letterSpacing:2, color:"var(--color-text-secondary)", textTransform:"uppercase", marginBottom:10 }}>Eerstvolgende bardienst</div>
-                      <div style={{ position:"relative", background:"var(--color-primary)", borderRadius:"var(--radius-card-featured)", padding:"22px 24px", overflow:"hidden" }}>
-                        <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(#ffffff33 1.5px,transparent 1.6px)", backgroundSize:"14px 14px" }} />
+                      <div style={{ position:"relative", background:BD_NAVY, borderRadius:17, padding:"22px 24px", overflow:"hidden" }}>
+                        <div style={{ position:"absolute", top:-20, right:16, width:130, height:130, backgroundImage:"radial-gradient(rgba(255,255,255,.15) 1px,transparent 1px)", backgroundSize:"12px 12px" }} />
                         <div style={{ position:"relative", display:"flex", alignItems:"center", gap:20, flexWrap:"wrap" }}>
-                          <div style={{ background:"#fff", borderRadius:10, width:54, padding:"6px 0", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:24, lineHeight:1, color:"var(--color-primary)" }}>{d.getDate()}</div>
-                            <div style={{ fontSize:9, fontWeight:800, color:"var(--color-text-secondary)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
+                          <div style={{ background:"#fff", borderRadius:8, width:43, height:43, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontSize:21, lineHeight:1, color:BD_NAVY }}>{d.getDate()}</div>
+                            <div style={{ fontSize:8, fontWeight:800, color:"var(--color-text-secondary)", textTransform:"uppercase" }}>{d.toLocaleDateString("nl-NL",{month:"short"})}</div>
                           </div>
                           <div style={{ flex:1, minWidth:200 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, flexWrap:"wrap" }}>
-                              <span style={{ background:"var(--color-accent)", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><Beer size={12} strokeWidth={2} /> Bardienst</span>
+                              <span style={{ background:BD_ORANGE, color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><Beer size={12} strokeWidth={2} /> Bardienst</span>
                               <span style={{ fontSize:12, fontWeight:800, letterSpacing:1, color:"#fff", textTransform:"uppercase" }}>{daysLabel}</span>
                               {shiftNames.length>0 && (
-                                <span style={{ background:"#ffffff26", color:"#fff", fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><CheckCircle2 size={12} strokeWidth={2} /> {presentCount}/{shiftNames.length} aanwezig</span>
+                                <span style={{ background:BD_SUCCESS_BG, color:BD_SUCCESS, fontSize:11, fontWeight:800, letterSpacing:1, textTransform:"uppercase", padding:"3px 11px", borderRadius:"var(--radius-pill)", display:"inline-flex", alignItems:"center", gap:5 }}><CheckCircle2 size={12} strokeWidth={2} /> {presentCount}/{shiftNames.length} aanwezig</span>
                               )}
                             </div>
                             <div style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:26, lineHeight:1.05, color:"#fff", textTransform:"uppercase" }}>{formatDate(nextShift.shift_date)}</div>
@@ -1251,7 +1258,7 @@ export default function HHCEvents() {
                               ) : null; })()}
                               {shiftNames.map((n,i)=>(
                                 <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:7, background:"#ffffff26", borderRadius:"var(--radius-pill)", padding:"3px 12px 3px 3px", fontSize:13, fontWeight:700, color:"#fff" }}>
-                                  <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:"var(--color-primary)", fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
+                                  <span style={{ width:22, height:22, borderRadius:"50%", background:"#fff", color:BD_NAVY, fontSize:10, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{initials(n)}</span>
                                   {n}
                                 </span>
                               ))}
@@ -1267,12 +1274,12 @@ export default function HHCEvents() {
                 {Object.entries(groupsMap).map(([month, shifts]) => (
                   <div key={month} style={{ marginBottom:30 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-                      <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:22, textTransform:"uppercase", color:"var(--color-primary)" }}>{month}</span>
-                      <div style={{ flex:1, height:3, background:"var(--color-accent)" }} />
+                      <span style={{ fontFamily:"'Saira Condensed',sans-serif", fontWeight:900, fontStyle:"italic", fontSize:22, textTransform:"uppercase", color:BD_NAVY }}>{month}</span>
+                      <div style={{ flex:1, height:3, background:BD_ORANGE }} />
                       <span style={{ fontSize:12, fontWeight:700, color:"var(--color-text-muted)", textTransform:"uppercase" }}>{shifts.length} dienst{shifts.length!==1?"en":""}</span>
                     </div>
                     <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                      {shifts.map(b => shiftRow(b, "#2E3192"))}
+                      {shifts.map(b => shiftRow(b, BD_NAVY))}
                     </div>
                   </div>
                 ))}
